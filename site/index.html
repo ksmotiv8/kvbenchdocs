@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Corpus Generator &mdash; Realistic Clinical Documents for KV Cache Benchmarks</title>
+    <meta name="description" content="Open-source synthetic medical document corpus for benchmarking KV cache offloading in vLLM + LMCache. LLM-generated clinical notes with exact token count control.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- ==================== NAV ==================== -->
+<nav>
+    <div class="nav-inner">
+        <a href="#" class="nav-logo">Medical Corpus <span class="accent">Generator</span></a>
+        <ul class="nav-links">
+            <li><a href="#problem">The Problem</a></li>
+            <li><a href="#model">Model</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#accuracy">Accuracy</a></li>
+            <li><a href="#corpus">Corpus</a></li>
+            <li><a href="#usage">Usage</a></li>
+        </ul>
+        <div class="nav-right">
+            <a href="#" class="btn-nav" aria-label="View on GitHub">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                GitHub
+            </a>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">&#9790;</button>
+            <button class="hamburger" id="hamburger" aria-label="Open menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Mobile Nav Overlay -->
+<div class="mobile-nav-overlay" id="mobile-nav">
+    <ul>
+        <li><a href="#problem">The Problem</a></li>
+        <li><a href="#model">Model Choice</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#accuracy">Token Accuracy</a></li>
+        <li><a href="#corpus">Generated Corpus</a></li>
+        <li><a href="#usage">Usage</a></li>
+    </ul>
+</div>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+    <div class="container">
+        <div class="badge fade-up">
+            <span class="dot"></span>
+            Open Source &bull; Reproducible
+        </div>
+        <h1 class="fade-up">Realistic Medical Documents<br>for <span class="gradient-text">KV Cache Benchmarks</span></h1>
+        <p class="subtitle fade-up">Replace <code class="code-inline">hi hi hi</code> with real clinical notes. LLM-generated EHR documents with exact token count control for meaningful vLLM + LMCache benchmarks.</p>
+        <div class="hero-stats fade-up">
+            <div class="stat-card">
+                <div class="stat-value">10K</div>
+                <div class="stat-label">Tokens / Doc</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">0.0%</div>
+                <div class="stat-label">Drift from Target</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10</div>
+                <div class="stat-label">Doc Types</div>
+            </div>
+        </div>
+        <div class="hero-buttons fade-up">
+            <a href="#" class="btn-primary">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                View on GitHub
+            </a>
+            <a href="#" class="btn-secondary">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Download Corpus
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- ==================== SECTION: THE PROBLEM ==================== -->
+<section id="problem">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">The Problem</span>
+            <h2>The default benchmark document</h2>
+            <p>LMCache ships with a long-document QA benchmark (<code class="code-inline">long_doc_qa.py</code>) for measuring KV cache offloading performance. When run without a corpus file, it generates documents like this:</p>
+        </div>
+
+        <div class="code-block fade-up">
+            <span class="lang-label">Python</span>
+            <pre><code class="language-python">warmup_prompts = [
+    str(i) + " " + " ".join(["hi"] * args.document_length)
+    for i in range(args.num_documents)
+]</code></pre>
+        </div>
+
+        <p class="fade-up" style="margin-bottom: 16px;">A "10,000-token document" is literally:</p>
+
+        <div class="code-block fade-up">
+            <span class="lang-label">Output</span>
+            <pre><code class="language-none">0 hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi ...</code></pre>
+        </div>
+
+        <p class="fade-up" style="margin-top: 24px; margin-bottom: 24px;">The token count is accurate &mdash; the Qwen3-8B tokenizer encodes <code class="code-inline">"hi"</code> as a single token, so 10,000 repetitions produce 10,001 tokens. But the problem is what the tokens <em>represent</em>. The entire document contains only <span class="highlight">2 unique tokens</span>. This matters for KV cache benchmarks because:</p>
+
+        <div class="cards-grid cards-grid-3 fade-up">
+            <div class="card">
+                <h3>Compression Ratios</h3>
+                <p>KV cache connectors compress tensors (typically with zstd) before sending them to remote storage. A document with 2 unique tokens produces highly regular tensors that compress to nearly nothing. A medical note with 1,329 unique tokens compresses very differently.</p>
+            </div>
+            <div class="card">
+                <h3>KV Tensor Diversity</h3>
+                <p>The key-value tensors produced by the attention mechanism reflect the input tokens. A monotonic <code class="code-inline">hi hi hi</code> sequence produces uniform tensors; clinical text with varied structure, numbers, and medical terminology produces tensors with much more variance.</p>
+            </div>
+            <div class="card">
+                <h3>Cache Access Patterns</h3>
+                <p>Real workloads involve documents with different prefixes, shared terminology, and overlapping but not identical content. The <code class="code-inline">hi hi hi</code> pattern shares nothing meaningful between documents except the same two tokens.</p>
+            </div>
+        </div>
+
+        <div class="subsection fade-up">
+            <h3>Measured on Qwen3-8B-FP8 with 10,000-token documents</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th class="text-right-head">Default (hi hi hi...)</th>
+                            <th class="text-right-head">Medical Corpus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Tokens</td>
+                            <td class="text-right">10,001</td>
+                            <td class="text-right">10,000</td>
+                        </tr>
+                        <tr>
+                            <td>Unique tokens</td>
+                            <td class="text-right">2</td>
+                            <td class="text-right">1,329</td>
+                        </tr>
+                        <tr>
+                            <td>Token diversity</td>
+                            <td class="text-right">0.02%</td>
+                            <td class="text-right">13.3%</td>
+                        </tr>
+                        <tr>
+                            <td>Characters</td>
+                            <td class="text-right">30,001</td>
+                            <td class="text-right">38,202</td>
+                        </tr>
+                        <tr>
+                            <td>Chars/token</td>
+                            <td class="text-right">3.00</td>
+                            <td class="text-right">3.82</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="analogy fade-up">
+            <p>Benchmarking KV cache offloading with <code class="code-inline">hi hi hi</code> is like benchmarking a database with <code class="code-inline">SELECT 1</code> &mdash; the numbers come back fast, but they don't tell you how the system performs under realistic load.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: MODEL CHOICE ==================== -->
+<section id="model">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Model Choice</span>
+            <h2>Open weights for full reproducibility</h2>
+            <p>We use <a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen/Qwen3-8B-FP8</a>, an open-weight model, for both document generation and benchmarking. Using an open model means anyone can reproduce the corpus exactly &mdash; same tokenizer, same generation behavior, same KV cache tensor shapes &mdash; without depending on a proprietary API.</p>
+        </div>
+
+        <div class="cards-grid fade-up" style="margin-bottom: 40px;">
+            <div class="card">
+                <h3>Qwen3-8B-FP8</h3>
+                <p>FP8-quantized variant fits comfortably on a single NVIDIA L4 (24 GB) GPU. Weights download automatically from HuggingFace on first run.</p>
+            </div>
+            <div class="card">
+                <h3>Reproducible</h3>
+                <p>Same tokenizer, same generation behavior, same KV cache tensor shapes. No proprietary API dependency &mdash; anyone can reproduce the exact same corpus.</p>
+            </div>
+            <div class="card">
+                <h3>OpenAI-Compatible API</h3>
+                <p>The vLLM server exposes an OpenAI-compatible API at <code class="code-inline">localhost:8000/v1</code>. The generation script connects to this endpoint directly.</p>
+            </div>
+        </div>
+
+        <div class="fade-up">
+            <h3>Setting up the model</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># Install vLLM (0.15.0 was used for corpus generation)
+pip install vllm
+
+# Start the model server (single GPU, ~21 GB VRAM)
+vllm serve Qwen/Qwen3-8B-FP8 \
+    --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.9
+
+# Verify it's running
+curl http://localhost:8000/health</code></pre>
+            </div>
+            <p style="margin-top: 16px;">For the corpus included in this repo, we ran on an AWS <code class="code-inline">g6.8xlarge</code> instance (NVIDIA L4, 24 GB VRAM). Any GPU with 24+ GB VRAM should work. Generation takes ~7 minutes per 10K-token document.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: HOW IT WORKS ==================== -->
+<section id="how-it-works">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">How It Works</span>
+            <h2>Two-stage generation</h2>
+            <p>The generator (<code class="code-inline">gen_medical_docs.py</code>) connects to the running vLLM instance and works in two stages. First it generates a realistic distribution of clinical document types, then it writes each document with exact token count control.</p>
+        </div>
+
+        <!-- Stage Overview -->
+        <div class="stage-overview fade-up">
+            <div class="card stage-card">
+                <div class="stage-number">1</div>
+                <h3>Scenario Generation</h3>
+                <p>Ask the LLM to define a realistic mix of clinical document types, like you'd see in a real hospital EHR system.</p>
+            </div>
+            <div class="arrow">&rarr;</div>
+            <div class="card stage-card">
+                <div class="stage-number">2</div>
+                <h3>Document Generation</h3>
+                <p>For each scenario, prompt the LLM to write a complete clinical document, continuing and trimming until it hits the exact target token count.</p>
+            </div>
+        </div>
+
+        <!-- Stage 1 Detail -->
+        <div class="subsection fade-up">
+            <h3>Stage 1 &mdash; Scenario generation</h3>
+            <p style="margin-bottom: 16px;">The script sends a single prompt asking the model to define the corpus structure:</p>
+            <div class="code-block prompt-block">
+                <span class="lang-label">Prompt</span>
+                <pre><code class="language-none">You are a <span class="prompt-role">health informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of medical document
+scenarios that represent the mix of clinical documents in a typical US hospital
+EHR system. For each scenario provide:
+
+- <span class="prompt-key">"scenario_id"</span>: short snake_case identifier
+- <span class="prompt-key">"title"</span>: human-readable title
+- <span class="prompt-key">"doc_type"</span>: the clinical document type (e.g. <span class="prompt-example">"ED Note"</span>, <span class="prompt-example">"Discharge Summary"</span>)
+- <span class="prompt-key">"setting"</span>: clinical setting (e.g. <span class="prompt-example">"Emergency Department"</span>, <span class="prompt-example">"Primary Care"</span>)
+- <span class="prompt-key">"weight"</span>: estimated proportion of all clinical documents (floats summing to <span class="prompt-number">1.0</span>)
+
+Include at least <span class="prompt-number">12</span> scenario types spanning inpatient, outpatient, emergency,
+surgical, imaging, lab, specialty, and behavioral health settings.
+
+<span class="prompt-instruction">Return ONLY the JSON array, no markdown fences, no explanation.</span></code></pre>
+            </div>
+            <p style="margin-top: 16px;">The model returns a JSON array of 12+ scenarios with weights. These weights are normalized to sum to 1.0, then used to allocate the requested number of documents across scenarios proportionally (e.g., if you ask for 15 docs and inpatient progress notes have weight 0.15, that scenario gets 2&ndash;3 documents).</p>
+        </div>
+
+        <!-- Stage 2 Detail -->
+        <div class="subsection fade-up">
+            <h3>Stage 2 &mdash; Document generation</h3>
+            <p style="margin-bottom: 16px;">For each allocated document, the script sends a generation prompt:</p>
+            <div class="code-block prompt-block">
+                <span class="lang-label">Prompt</span>
+                <pre><code class="language-none">Write a complete, realistic <span class="prompt-format">{doc_type}</span> for a fictional patient.
+
+Setting: <span class="prompt-example">{setting}</span>
+Scenario: <span class="prompt-example">{title}</span>
+Target length: approximately <span class="prompt-number">{token_target}</span> tokens (write a thorough, detailed document).
+
+Requirements:
+- <span class="prompt-instruction">Invent realistic but fictional patient demographics, history, findings, and plans.</span>
+- Use proper medical terminology, abbreviations, and formatting.
+- Include all standard sections for this document type.
+- Include realistic vital signs, lab values, medication names and dosages.
+- <span class="prompt-instruction">Do NOT include any meta-commentary — output only the document itself.</span>
+- Write continuously until you have produced a detailed, complete document of
+  approximately <span class="prompt-number">{token_target}</span> tokens.
+- This is document <span class="prompt-number">#{doc_number}</span> for this scenario — make it distinct from others.</code></pre>
+            </div>
+        </div>
+
+        <!-- Continuation Loop -->
+        <div class="subsection fade-up">
+            <h3>Continuation loop</h3>
+            <p style="margin-bottom: 16px;">If the first response doesn't reach the target token count, the script sends the partial text back as assistant context along with a continuation prompt:</p>
+            <div class="code-block prompt-block">
+                <span class="lang-label">Prompt</span>
+                <pre><code class="language-none">Continue writing the <span class="prompt-format">{doc_type}</span> from exactly where you left off. <span class="prompt-instruction">Do NOT repeat
+any content already written.</span> Keep the same patient, same case, same formatting.
+Write at least <span class="prompt-number">{remaining_tokens}</span> more tokens of additional clinical detail —
+expand on findings, add more lab results, imaging reads, nursing notes, consult
+responses, or follow-up documentation. <span class="prompt-instruction">Output ONLY the continuation text, no
+preamble.</span></code></pre>
+            </div>
+            <p style="margin-top: 16px;">This loop repeats until the accumulated text reaches the target (within 2% tolerance), at which point it's trimmed to the exact token count.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: TOKEN COUNT ACCURACY ==================== -->
+<section id="accuracy">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Token Count Accuracy</span>
+            <h2>Solving the token count problem</h2>
+            <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially &mdash; one word, one token, repeat N times. But when generating real clinical documents with an LLM, token count accuracy became a significant problem.</p>
+        </div>
+
+        <!-- v1 problem -->
+        <div class="fade-up">
+            <h3>The v1 problem: consistently oversized documents</h3>
+            <p style="margin-bottom: 16px;">The first version asked the LLM to write documents of approximately 10,000 tokens, then relied on the API's <code class="code-inline">completion_tokens</code> field to track how many tokens had been generated. The results were consistently oversized:</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="text-right-head">Doc</th>
+                            <th>Type</th>
+                            <th class="text-right-head">Actual Tokens</th>
+                            <th class="text-right-head">Target</th>
+                            <th class="text-right-head">Diff</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-right">0</td>
+                            <td>ED Admission Note</td>
+                            <td class="text-right">14,333</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+43.3%</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">1</td>
+                            <td>ED Admission Note</td>
+                            <td class="text-right">12,598</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+26.0%</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">2</td>
+                            <td>ED Discharge Summary</td>
+                            <td class="text-right">14,180</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+41.8%</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">5</td>
+                            <td>Inpatient Order Set</td>
+                            <td class="text-right">19,574</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+95.7%</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">6</td>
+                            <td>Outpatient Visit</td>
+                            <td class="text-right">10,655</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+6.6%</td>
+                        </tr>
+                        <tr class="row-highlight">
+                            <td class="text-right"></td>
+                            <td>Mean (15 docs)</td>
+                            <td class="text-right">12,763</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right" style="color: #f87171;">+27.6%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Root causes -->
+        <div class="subsection fade-up">
+            <h3>Root causes</h3>
+            <div class="cards-grid" style="margin-top: 20px;">
+                <div class="card numbered-card">
+                    <div class="card-number">1</div>
+                    <div class="card-content">
+                        <h3>Thinking tokens counted as content</h3>
+                        <p>Qwen3 models emit <code class="code-inline">&lt;think&gt;...&lt;/think&gt;</code> reasoning blocks before generating text. The API's <code class="code-inline">completion_tokens</code> counts these thinking tokens, but the script strips them from the final document. A response reported as 8,000 tokens might only contribute 4,000 tokens of actual document text.</p>
+                    </div>
+                </div>
+                <div class="card numbered-card">
+                    <div class="card-number">2</div>
+                    <div class="card-content">
+                        <h3>Character-ratio heuristics</h3>
+                        <p>The v1 script tried to compensate by estimating "real" tokens using a characters-per-token ratio. This heuristic was unreliable &mdash; medical text has highly variable token density (abbreviations like "CBC" are 1 token, drug names like "acetaminophen" are 3&ndash;4 tokens).</p>
+                    </div>
+                </div>
+                <div class="card numbered-card">
+                    <div class="card-number">3</div>
+                    <div class="card-content">
+                        <h3>No final verification</h3>
+                        <p>The script never tokenized the accumulated document text to verify the count. It just summed up estimated per-response counts and hoped for the best.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- v2 fixes -->
+        <div class="subsection fade-up">
+            <h3>How v2 fixes this</h3>
+            <p style="margin-bottom: 20px;">The v2 generator loads the model's own HuggingFace tokenizer at startup and uses it for all counting:</p>
+            <div class="cards-grid">
+                <div class="card numbered-card">
+                    <div class="card-number">1</div>
+                    <div class="card-content">
+                        <h3>Local tokenizer</h3>
+                        <p><code class="code-inline">transformers.AutoTokenizer</code> gives exact token counts by tokenizing the actual document text, not by trusting API response metadata.</p>
+                    </div>
+                </div>
+                <div class="card numbered-card">
+                    <div class="card-number">2</div>
+                    <div class="card-content">
+                        <h3>Thinking disabled at API level</h3>
+                        <p>Instead of stripping <code class="code-inline">&lt;think&gt;</code> blocks after the fact, v2 passes <code class="code-inline">chat_template_kwargs: {"enable_thinking": False}</code> via <code class="code-inline">extra_body</code>. This tells the model's chat template to skip reasoning entirely.</p>
+                    </div>
+                </div>
+                <div class="card numbered-card">
+                    <div class="card-number">3</div>
+                    <div class="card-content">
+                        <h3>Full-text re-counting</h3>
+                        <p>After each continuation, the script tokenizes the entire accumulated document, not just the new chunk. This avoids drift from summing per-response estimates.</p>
+                    </div>
+                </div>
+                <div class="card numbered-card">
+                    <div class="card-number">4</div>
+                    <div class="card-content">
+                        <h3>Encode-slice-decode trimming</h3>
+                        <p>Once the document reaches or exceeds the target, it's trimmed to exactly <code class="code-inline">token_target</code> tokens: encode to token IDs, slice to target length, decode back to text.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Before / After -->
+        <div class="subsection fade-up">
+            <h3>Before and after</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th class="text-right-head">v1 Corpus</th>
+                            <th class="text-right-head">v2 Corpus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Mean diff from target</td>
+                            <td class="text-right" style="color: #f87171;">+27.6%</td>
+                            <td class="text-right" style="color: #4ade80;">0.0%</td>
+                        </tr>
+                        <tr>
+                            <td>Min diff</td>
+                            <td class="text-right" style="color: #f87171;">+6.6%</td>
+                            <td class="text-right" style="color: #4ade80;">-0.0% (9,999/10,000)</td>
+                        </tr>
+                        <tr>
+                            <td>Max diff</td>
+                            <td class="text-right" style="color: #f87171;">+95.7%</td>
+                            <td class="text-right" style="color: #4ade80;">0.0%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: GENERATED CORPUS ==================== -->
+<section id="corpus">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Generated Corpus</span>
+            <h2>10 documents, 99,999 tokens</h2>
+            <p>The included corpus (<code class="code-inline">medical_docs_10000.jsonl</code>) contains 10 documents totaling 99,999 tokens. Stage 1 produced 12 scenarios; with 10 documents to allocate, the proportional weighting resulted in the following distribution:</p>
+        </div>
+
+        <!-- Category Cards -->
+        <div class="category-list fade-up">
+            <div class="category-item">
+                <span class="cat-badge emergency">Emergency</span>
+                <div class="cat-text">
+                    <h4>Emergency Department (2 docs)</h4>
+                    <p>An ED initial assessment for a 41-year-old male presenting with severe abdominal pain, and a discharge summary for a patient treated for chest pain with cardiac workup.</p>
+                </div>
+            </div>
+            <div class="category-item">
+                <span class="cat-badge inpatient">Inpatient</span>
+                <div class="cat-text">
+                    <h4>Inpatient (3 docs)</h4>
+                    <p>Two daily progress notes tracking different patients through multi-day hospital stays, plus a medication reconciliation document listing current and home medications with dosage adjustments.</p>
+                </div>
+            </div>
+            <div class="category-item">
+                <span class="cat-badge outpatient">Outpatient</span>
+                <div class="cat-text">
+                    <h4>Outpatient (1 doc)</h4>
+                    <p>A primary care follow-up note for chronic disease management with lab review and medication titration.</p>
+                </div>
+            </div>
+            <div class="category-item">
+                <span class="cat-badge surgical">Surgical</span>
+                <div class="cat-text">
+                    <h4>Surgical (1 doc)</h4>
+                    <p>A preoperative evaluation for an elective procedure, including anesthesia risk assessment and surgical planning.</p>
+                </div>
+            </div>
+            <div class="category-item">
+                <span class="cat-badge diagnostics">Diagnostics</span>
+                <div class="cat-text">
+                    <h4>Diagnostics (2 docs)</h4>
+                    <p>A multi-modality imaging report (CT, MRI, X-ray findings) and a comprehensive laboratory result report spanning CBC, CMP, coagulation, thyroid, and specialty panels.</p>
+                </div>
+            </div>
+            <div class="category-item">
+                <span class="cat-badge specialty">Specialty</span>
+                <div class="cat-text">
+                    <h4>Specialty (1 doc)</h4>
+                    <p>A specialty clinical consultation note with detailed examination findings and treatment recommendations.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Diversity Table -->
+        <div class="subsection fade-up">
+            <h3>Token count and diversity</h3>
+            <p style="margin-bottom: 16px;">All 10 documents verified with <code class="code-inline">verify_tokens.py</code> using the Qwen3-8B-FP8 tokenizer:</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="text-right-head">Doc</th>
+                            <th>Type</th>
+                            <th class="text-right-head">Tokens</th>
+                            <th class="text-right-head">Unique</th>
+                            <th class="text-right-head">Diversity</th>
+                            <th class="text-right-head">Chars</th>
+                            <th class="text-right-head">Chars/tok</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-right">0</td>
+                            <td>ED Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,329</td>
+                            <td class="text-right">13.3%</td>
+                            <td class="text-right">38,202</td>
+                            <td class="text-right">3.82</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">1</td>
+                            <td>Discharge Summary</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,545</td>
+                            <td class="text-right">15.4%</td>
+                            <td class="text-right">39,466</td>
+                            <td class="text-right">3.95</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">2</td>
+                            <td>Progress Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,233</td>
+                            <td class="text-right">12.3%</td>
+                            <td class="text-right">32,571</td>
+                            <td class="text-right">3.26</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">3</td>
+                            <td>Progress Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">997</td>
+                            <td class="text-right">10.0%</td>
+                            <td class="text-right">32,451</td>
+                            <td class="text-right">3.25</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">4</td>
+                            <td>Medication Reconciliation</td>
+                            <td class="text-right">9,999</td>
+                            <td class="text-right">938</td>
+                            <td class="text-right">9.4%</td>
+                            <td class="text-right">27,787</td>
+                            <td class="text-right">2.78</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">5</td>
+                            <td>Progress Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,277</td>
+                            <td class="text-right">12.8%</td>
+                            <td class="text-right">36,548</td>
+                            <td class="text-right">3.65</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">6</td>
+                            <td>Preoperative Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">989</td>
+                            <td class="text-right">9.9%</td>
+                            <td class="text-right">28,426</td>
+                            <td class="text-right">2.84</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">7</td>
+                            <td>Imaging Report</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,466</td>
+                            <td class="text-right">14.7%</td>
+                            <td class="text-right">37,667</td>
+                            <td class="text-right">3.77</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">8</td>
+                            <td>Lab Report</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,652</td>
+                            <td class="text-right">16.5%</td>
+                            <td class="text-right">33,063</td>
+                            <td class="text-right">3.31</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">9</td>
+                            <td>Clinical Note</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,392</td>
+                            <td class="text-right">13.9%</td>
+                            <td class="text-right">39,090</td>
+                            <td class="text-right">3.91</td>
+                        </tr>
+                        <tr class="row-highlight">
+                            <td class="text-right"></td>
+                            <td>Mean</td>
+                            <td class="text-right">9,999</td>
+                            <td class="text-right">1,281</td>
+                            <td class="text-right">12.8%</td>
+                            <td class="text-right">34,527</td>
+                            <td class="text-right">3.45</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation &mdash; heavy on repeated drug names and dosages) to 16.5% (lab report &mdash; many distinct test names and numeric values). All documents are 640x more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%).</p>
+            <p style="margin-top: 12px;">Characters per token varies from 2.78 (medication reconciliation, with many short abbreviations and numbers) to 3.95 (discharge summary, with more natural prose). This variance is itself representative of real clinical text &mdash; different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
+        </div>
+
+        <!-- Document Types Table -->
+        <div class="subsection fade-up">
+            <h3>Document types in the corpus</h3>
+            <p style="margin-bottom: 16px;">The LLM generates a realistic mix of clinical document types. A typical run produces:</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Document Type</th>
+                            <th>Setting</th>
+                            <th class="text-right-head">Proportion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ED Initial Note</td>
+                            <td>Emergency Department</td>
+                            <td class="text-right">~12%</td>
+                        </tr>
+                        <tr>
+                            <td>ED Discharge Summary</td>
+                            <td>Emergency Department</td>
+                            <td class="text-right">~8%</td>
+                        </tr>
+                        <tr>
+                            <td>Inpatient Progress Note</td>
+                            <td>Inpatient</td>
+                            <td class="text-right">~15%</td>
+                        </tr>
+                        <tr>
+                            <td>Medication Reconciliation</td>
+                            <td>Inpatient</td>
+                            <td class="text-right">~7%</td>
+                        </tr>
+                        <tr>
+                            <td>Outpatient Progress Note</td>
+                            <td>Primary Care</td>
+                            <td class="text-right">~10%</td>
+                        </tr>
+                        <tr>
+                            <td>Surgical Preoperative Note</td>
+                            <td>Surgery</td>
+                            <td class="text-right">~6%</td>
+                        </tr>
+                        <tr>
+                            <td>Surgical Postoperative Note</td>
+                            <td>Surgery</td>
+                            <td class="text-right">~5%</td>
+                        </tr>
+                        <tr>
+                            <td>Imaging Report</td>
+                            <td>Radiology</td>
+                            <td class="text-right">~9%</td>
+                        </tr>
+                        <tr>
+                            <td>Laboratory Result Report</td>
+                            <td>Lab</td>
+                            <td class="text-right">~8%</td>
+                        </tr>
+                        <tr>
+                            <td>Specialty Clinical Note</td>
+                            <td>Specialty</td>
+                            <td class="text-right">~7%</td>
+                        </tr>
+                        <tr>
+                            <td>Behavioral Health Intake</td>
+                            <td>Behavioral Health</td>
+                            <td class="text-right">~5%</td>
+                        </tr>
+                        <tr>
+                            <td>Discharge Instructions</td>
+                            <td>Inpatient</td>
+                            <td class="text-right">~5%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="margin-top: 16px;">The exact mix varies per run since Stage 1 is stochastic, but proportions approximate real-world EHR distributions.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: USAGE ==================== -->
+<section id="usage">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Usage</span>
+            <h2>Get started</h2>
+            <p>Generate, verify, and parse your own corpus with a few commands.</p>
+        </div>
+
+        <!-- Prerequisites -->
+        <div class="fade-up">
+            <h3>Prerequisites</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash">pip install openai transformers</code></pre>
+            </div>
+            <p style="margin-top: 8px;">A running vLLM instance (see <a href="#model">Setting up the model</a> above).</p>
+        </div>
+
+        <!-- Generate -->
+        <div class="subsection fade-up">
+            <h3>Generate a corpus</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># 15 documents at exactly 10,000 tokens each
+python gen_medical_docs.py \
+    --api-base http://localhost:8000/v1 \
+    --sizes 10000 \
+    --docs-per-size 15
+
+# Multiple sizes (e.g., for testing different document lengths)
+python gen_medical_docs.py \
+    --api-base http://GPU_HOST:8000/v1 \
+    --sizes 1000,5000,10000 \
+    --docs-per-size 10 \
+    --output-dir ./corpus</code></pre>
+            </div>
+            <p style="margin-top: 12px;">Output: <code class="code-inline">medical_docs/medical_docs_10000.jsonl</code> (one JSON object per line). Generation takes ~7 minutes per document at 10K tokens on an L4 GPU.</p>
+
+            <p style="margin-top: 16px;">Each line contains:</p>
+            <div class="code-block">
+                <span class="lang-label">JSON</span>
+                <pre><code class="language-json">{
+  "id": "ed_initial_note-10000-0",
+  "token_target": 10000,
+  "actual_tokens": 10000,
+  "scenario_id": "ed_initial_note",
+  "scenario_title": "Emergency Department Initial Note",
+  "doc_type": "ED Note",
+  "document": "**ED Note**\n\n**Patient Name:** James M. Harper\n..."
+}</code></pre>
+            </div>
+        </div>
+
+        <!-- Verify -->
+        <div class="subsection fade-up">
+            <h3>Verify token counts</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># Verify with the same tokenizer used for generation
+python verify_tokens.py medical_docs_10000.jsonl
+
+# Use a different model's tokenizer
+python verify_tokens.py medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
+
+# Include the benchmark prompt wrapper (as long_doc_qa.py sends it)
+python verify_tokens.py medical_docs_10000.jsonl --include-prompt
+
+# CSV output for spreadsheets
+python verify_tokens.py medical_docs_10000.jsonl --csv > report.csv</code></pre>
+            </div>
+        </div>
+
+        <!-- Parse -->
+        <div class="subsection fade-up">
+            <h3>Parse into individual documents</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># Default: writes docs/ and manifest.csv next to the JSONL file
+python parse_corpus.py medical_docs_10000.jsonl
+
+# Custom output directory
+python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
+
+# Skip the manifest CSV
+python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
+            </div>
+            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like real clinical notes &mdash; complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
+        </div>
+
+        <!-- Benchmark integration -->
+        <div class="subsection fade-up">
+            <h3>Benchmark integration</h3>
+            <p style="margin-bottom: 16px;">The JSONL corpus is consumed directly by LMCache's <code class="code-inline">long_doc_qa.py</code> benchmark via the <code class="code-inline">--corpus-file</code> flag:</p>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash">python benchmarks/long_doc_qa/long_doc_qa.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file /path/to/medical_docs_10000.jsonl \
+    --num-documents 15 \
+    --document-length 10000 \
+    --output-len 100 \
+    --repeat-count 1 \
+    --repeat-mode tile \
+    --max-inflight-requests 4</code></pre>
+            </div>
+            <p style="margin-top: 12px;">This replaces the default <code class="code-inline">hi hi hi...</code> generator with real medical documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== CTA SECTION ==================== -->
+<section class="cta-section">
+    <div class="container">
+        <h2 class="fade-up">Try it yourself</h2>
+        <p class="fade-up">Generate your own medical document corpus and benchmark with realistic clinical text instead of <code class="code-inline">hi hi hi</code>.</p>
+        <div class="cta-buttons fade-up">
+            <a href="#" class="btn-primary">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                View on GitHub
+            </a>
+            <a href="#" class="btn-secondary">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Download Corpus
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+    <div class="container">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="nav-logo">Medical Corpus <span class="accent">Generator</span></div>
+                <p>Synthetic medical document corpus for benchmarking KV cache offloading in vLLM + LMCache.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-col">
+                    <h4>Project</h4>
+                    <ul>
+                        <li><a href="#problem">The Problem</a></li>
+                        <li><a href="#model">Model Choice</a></li>
+                        <li><a href="#how-it-works">How It Works</a></li>
+                        <li><a href="#accuracy">Token Accuracy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#corpus">Generated Corpus</a></li>
+                        <li><a href="#usage">Usage Guide</a></li>
+                        <li><a href="#">GitHub</a></li>
+                        <li><a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen3-8B-FP8</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Stack</h4>
+                    <ul>
+                        <li><a href="https://github.com/vllm-project/vllm">vLLM</a></li>
+                        <li><a href="https://github.com/LMCache/LMCache">LMCache</a></li>
+                        <li><a href="https://huggingface.co/docs/transformers">Transformers</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Medical Corpus Generator. Open source under MIT License.
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup-templating.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
