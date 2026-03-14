@@ -183,7 +183,7 @@ The included corpus (`medical_docs_10000.jsonl`) contains 10 documents totaling 
 - **Diagnostics** (2 docs): A multi-modality imaging report (CT, MRI, X-ray findings) and a comprehensive laboratory result report spanning CBC, CMP, coagulation, thyroid, and specialty panels.
 - **Specialty** (1 doc): A specialty clinical consultation note with detailed examination findings and treatment recommendations.
 
-Each document reads like a real clinical note — formatted with standard EHR section headers, realistic vital signs, medication dosages, lab values, and clinical reasoning. The documents are individual `.md` files in the `docs/` subdirectory if you want to browse them.
+Each document reads like a real clinical note — formatted with standard EHR section headers, realistic vital signs, medication dosages, lab values, and clinical reasoning. The documents are individual `.md` files in the `corpus/` subdirectory if you want to browse them.
 
 ### Token count and diversity
 
@@ -210,18 +210,22 @@ Characters per token varies from 2.78 (medication reconciliation, with many shor
 ## What's in this folder
 
 ```
-v2/
+kvbenchdocs/
 ├── README.md                        # This file
 ├── gen_medical_docs.py              # Stage 1+2: LLM-based document generator
 ├── parse_corpus.py                  # JSONL → individual .md files + manifest
 ├── verify_tokens.py                 # Independent token count verification
 ├── medical_docs_10000.jsonl         # Generated corpus (10 docs × 10K tokens)
 ├── manifest.csv                     # Metadata for all documents
-└── docs/                            # Individual documents as readable .md files
-    ├── ed_initial_note-10000-0.md
-    ├── ed_discharge_summary-10000-1.md
-    ├── inpatient_progress_note-10000-2.md
-    └── ...
+├── corpus/                          # Individual documents as readable .md files
+│   ├── ed_initial_note-10000-0.md
+│   ├── ed_discharge_summary-10000-1.md
+│   ├── inpatient_progress_note-10000-2.md
+│   └── ...
+└── docs/                            # Blog website (served via GitHub Pages)
+    ├── index.html
+    ├── styles.css
+    └── script.js
 ```
 
 ## Usage
