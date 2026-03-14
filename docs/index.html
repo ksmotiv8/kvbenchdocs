@@ -26,7 +26,7 @@
             <li><a href="#usage">Usage</a></li>
         </ul>
         <div class="nav-right">
-            <a href="#" class="btn-nav" aria-label="View on GitHub">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-nav" aria-label="View on GitHub">
                 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 GitHub
             </a>
@@ -74,11 +74,11 @@
             </div>
         </div>
         <div class="hero-buttons fade-up">
-            <a href="#" class="btn-primary">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-primary">
                 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 View on GitHub
             </a>
-            <a href="#" class="btn-secondary">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs/raw/main/medical_docs_10000.jsonl" class="btn-secondary">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
                 Download Corpus
             </a>
@@ -92,7 +92,7 @@
         <div class="section-intro fade-up">
             <span class="section-tag">The Problem</span>
             <h2>The default benchmark document</h2>
-            <p>LMCache ships with a long-document QA benchmark (<code class="code-inline">long_doc_qa.py</code>) for measuring KV cache offloading performance. When run without a corpus file, it generates documents like this:</p>
+            <p>LMCache ships with a long-document QA benchmark (<a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a>) for measuring KV cache offloading performance. When run without a corpus file, it generates documents like this:</p>
         </div>
 
         <div class="code-block fade-up">
@@ -844,7 +844,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
         <!-- Benchmark integration -->
         <div class="subsection fade-up">
             <h3>Benchmark integration</h3>
-            <p style="margin-bottom: 16px;">The JSONL corpus is consumed directly by LMCache's <code class="code-inline">long_doc_qa.py</code> benchmark via the <code class="code-inline">--corpus-file</code> flag:</p>
+            <p style="margin-bottom: 16px;">The JSONL corpus is consumed directly by LMCache's <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a> benchmark via the <code class="code-inline">--corpus-file</code> flag:</p>
             <div class="code-block">
                 <span class="lang-label">Bash</span>
                 <pre><code class="language-bash">python benchmarks/long_doc_qa/long_doc_qa.py \
@@ -870,11 +870,11 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
         <h2 class="fade-up">Try it yourself</h2>
         <p class="fade-up">Generate your own medical document corpus and benchmark with realistic clinical text instead of <code class="code-inline">hi hi hi</code>.</p>
         <div class="cta-buttons fade-up">
-            <a href="#" class="btn-primary">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-primary">
                 <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 View on GitHub
             </a>
-            <a href="#" class="btn-secondary">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs/raw/main/medical_docs_10000.jsonl" class="btn-secondary">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
                 Download Corpus
             </a>
@@ -905,7 +905,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
                     <ul>
                         <li><a href="#corpus">Generated Corpus</a></li>
                         <li><a href="#usage">Usage Guide</a></li>
-                        <li><a href="#">GitHub</a></li>
+                        <li><a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></li>
                         <li><a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen3-8B-FP8</a></li>
                     </ul>
                 </div>
