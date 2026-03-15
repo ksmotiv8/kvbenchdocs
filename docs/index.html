@@ -325,10 +325,10 @@ preamble.</span></code></pre>
             <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially &mdash; one word, one token, repeat N times. But when generating real clinical documents with an LLM, token count accuracy became a significant problem.</p>
         </div>
 
-        <!-- v1 problem -->
+        <!-- Initial approach -->
         <div class="fade-up">
-            <h3>The v1 problem: consistently oversized documents</h3>
-            <p style="margin-bottom: 16px;">The first version asked the LLM to write documents of approximately 10,000 tokens, then relied on the API's <code class="code-inline">completion_tokens</code> field to track how many tokens had been generated. The results were consistently oversized:</p>
+            <h3>The initial approach: consistently oversized documents</h3>
+            <p style="margin-bottom: 16px;">Our first attempt asked the LLM to write documents of approximately 10,000 tokens, then relied on the API's <code class="code-inline">completion_tokens</code> field to track how many tokens had been generated. The results were consistently oversized:</p>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -403,7 +403,7 @@ preamble.</span></code></pre>
                     <div class="card-number">2</div>
                     <div class="card-content">
                         <h3>Character-ratio heuristics</h3>
-                        <p>The v1 script tried to compensate by estimating "real" tokens using a characters-per-token ratio. This heuristic was unreliable &mdash; medical text has highly variable token density (abbreviations like "CBC" are 1 token, drug names like "acetaminophen" are 3&ndash;4 tokens).</p>
+                        <p>The initial script tried to compensate by estimating "real" tokens using a characters-per-token ratio. This heuristic was unreliable &mdash; medical text has highly variable token density (abbreviations like "CBC" are 1 token, drug names like "acetaminophen" are 3&ndash;4 tokens).</p>
                     </div>
                 </div>
                 <div class="card numbered-card">
@@ -416,10 +416,10 @@ preamble.</span></code></pre>
             </div>
         </div>
 
-        <!-- v2 fixes -->
+        <!-- Fixes -->
         <div class="subsection fade-up">
-            <h3>How v2 fixes this</h3>
-            <p style="margin-bottom: 20px;">The v2 generator loads the model's own HuggingFace tokenizer at startup and uses it for all counting:</p>
+            <h3>How we fixed it</h3>
+            <p style="margin-bottom: 20px;">The generator now loads the model's own HuggingFace tokenizer at startup and uses it for all counting:</p>
             <div class="cards-grid">
                 <div class="card numbered-card">
                     <div class="card-number">1</div>
@@ -432,7 +432,7 @@ preamble.</span></code></pre>
                     <div class="card-number">2</div>
                     <div class="card-content">
                         <h3>Thinking disabled at API level</h3>
-                        <p>Instead of stripping <code class="code-inline">&lt;think&gt;</code> blocks after the fact, v2 passes <code class="code-inline">chat_template_kwargs: {"enable_thinking": False}</code> via <code class="code-inline">extra_body</code>. This tells the model's chat template to skip reasoning entirely.</p>
+                        <p>Instead of stripping <code class="code-inline">&lt;think&gt;</code> blocks after the fact, the generator passes <code class="code-inline">chat_template_kwargs: {"enable_thinking": False}</code> via <code class="code-inline">extra_body</code>. This tells the model's chat template to skip reasoning entirely.</p>
                     </div>
                 </div>
                 <div class="card numbered-card">
@@ -460,8 +460,8 @@ preamble.</span></code></pre>
                     <thead>
                         <tr>
                             <th>Metric</th>
-                            <th class="text-right-head">v1 Corpus</th>
-                            <th class="text-right-head">v2 Corpus</th>
+                            <th class="text-right-head">Before</th>
+                            <th class="text-right-head">After</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -542,6 +542,15 @@ preamble.</span></code></pre>
                     <p>A specialty clinical consultation note with detailed examination findings and treatment recommendations.</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Document Preview -->
+        <div class="subsection fade-up">
+            <h3>Preview the documents</h3>
+            <p style="margin-bottom: 16px;">Click a tab to preview the first ~150 lines of each document. Full documents are 10,000 tokens each.</p>
+            <div class="doc-tabs" id="doc-tabs"></div>
+            <div class="doc-preview" id="doc-preview"></div>
+            <p class="doc-truncated-notice" style="margin-top: 12px; font-size: 0.8125rem; color: var(--text-tertiary); text-align: center;">Showing first ~150 lines. Full document is 10,000 tokens.</p>
         </div>
 
         <!-- Full Diversity Table -->
