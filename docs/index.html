@@ -24,6 +24,7 @@
             <li><a href="#accuracy">Accuracy</a></li>
             <li><a href="#corpus">Corpus</a></li>
             <li><a href="#usage">Usage</a></li>
+            <li><a href="#benchmark">Benchmark</a></li>
         </ul>
         <div class="nav-right">
             <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-nav" aria-label="View on GitHub">
@@ -813,7 +814,8 @@ python gen_medical_docs.py \
                 <pre><code class="language-bash"># Verify with the same tokenizer used for generation
 python verify_tokens.py medical_docs_10000.jsonl
 
-# Use a different model's tokenizer
+# Check how many tokens a different model's tokenizer sees
+# (useful if you generated with Qwen but benchmark on a different model)
 python verify_tokens.py medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
 
 # Include the benchmark prompt wrapper (as long_doc_qa.py sends it)
@@ -864,6 +866,128 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
 
 <hr class="section-divider">
 
+<!-- ==================== SECTION: BENCHMARK TOOL ==================== -->
+<section id="benchmark">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Benchmark Tool</span>
+            <h2>bench_kvcache.py</h2>
+            <p>An improved KV cache benchmark that addresses limitations in LMCache's built-in <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a>. Supports loading the medical corpus directly, skipping warmup phases, and reporting detailed TTFT percentiles.</p>
+        </div>
+
+        <!-- How it differs -->
+        <div class="fade-up">
+            <h3>How it differs from LMCache benchmarks</h3>
+            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. All of them generate documents using repeated <code class="code-inline">"hi"</code> tokens &mdash; 2 unique tokens, 0.02% diversity. <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
+            <div class="cards-grid cards-grid-3 fade-up">
+                <div class="card">
+                    <h3>Corpus file support</h3>
+                    <p><code class="code-inline">--corpus-file</code> loads documents directly from the JSONL medical corpus instead of generating synthetic <code class="code-inline">hi hi hi</code> padding. Also supports 5 built-in text styles (mixed, technical, legal, conversation, narrative) when no corpus is provided.</p>
+                </div>
+                <div class="card">
+                    <h3>Independent concurrency</h3>
+                    <p>Separate <code class="code-inline">--warmup-concurrency</code> and <code class="code-inline">--query-concurrency</code> controls. LMCache uses a single setting for both phases, making it impossible to warm the cache serially while querying at high concurrency.</p>
+                </div>
+                <div class="card">
+                    <h3>Skip warmup</h3>
+                    <p><code class="code-inline">--skip-warmup</code> and <code class="code-inline">--skip-pre-warmup</code> flags let you benchmark against an already-warm cache. LMCache always runs warmup with no way to skip it.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="subsection fade-up">
+            <h3>Detailed metrics</h3>
+            <p style="margin-bottom: 16px;">Where LMCache reports only a trimmed mean TTFT, <code class="code-inline">bench_kvcache.py</code> reports a full statistical breakdown per phase:</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>bench_kvcache.py</th>
+                            <th>LMCache long_doc_qa.py</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TTFT min / max</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>TTFT p50 / p95 / p99</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>Trimmed mean</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: #4ade80;">Yes</td>
+                        </tr>
+                        <tr>
+                            <td>Throughput (prompts/s)</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>CSV with config metadata</td>
+                            <td style="color: #4ade80;">Append-mode</td>
+                            <td>Separate files</td>
+                        </tr>
+                        <tr>
+                            <td>Visualization</td>
+                            <td style="color: #4ade80;">Histogram + scatter + CDF</td>
+                            <td>Gantt chart</td>
+                        </tr>
+                        <tr>
+                            <td>Timer precision</td>
+                            <td style="color: #4ade80;"><code class="code-inline">perf_counter</code></td>
+                            <td><code class="code-inline">time.time</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Hit/miss -->
+        <div class="subsection fade-up">
+            <h3>Realistic cache miss simulation</h3>
+            <p>The <code class="code-inline">--hit-ratio</code> flag controls what fraction of query-round requests are cache hits. Misses use entirely new documents with realistic vocabulary &mdash; not the same prompt with a random number prepended (which is what LMCache does). This produces more realistic mixed-workload benchmarks.</p>
+        </div>
+
+        <!-- Usage examples -->
+        <div class="subsection fade-up">
+            <h3>Running the benchmark</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># Run with the medical corpus
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --query-concurrency 4 \
+    --max-tokens 100 \
+    --csv results.csv
+
+# Skip warmup (cache already populated from a previous run)
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --skip-warmup \
+    --query-concurrency 8
+
+# Simulate 75% cache hit ratio
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --hit-ratio 0.75 \
+    --visualize results.png</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
 <!-- ==================== CTA SECTION ==================== -->
 <section class="cta-section">
     <div class="container">
@@ -905,6 +1029,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
                     <ul>
                         <li><a href="#corpus">Generated Corpus</a></li>
                         <li><a href="#usage">Usage Guide</a></li>
+                        <li><a href="#benchmark">Benchmark Tool</a></li>
                         <li><a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></li>
                         <li><a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen3-8B-FP8</a></li>
                     </ul>
