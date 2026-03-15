@@ -18,6 +18,7 @@
     <div class="nav-inner">
         <a href="#" class="nav-logo">Medical Corpus <span class="accent">Generator</span></a>
         <ul class="nav-links">
+            <li><a href="#background">Background</a></li>
             <li><a href="#problem">The Problem</a></li>
             <li><a href="#model">Model</a></li>
             <li><a href="#how-it-works">How It Works</a></li>
@@ -42,12 +43,14 @@
 <!-- Mobile Nav Overlay -->
 <div class="mobile-nav-overlay" id="mobile-nav">
     <ul>
+        <li><a href="#background">Background</a></li>
         <li><a href="#problem">The Problem</a></li>
         <li><a href="#model">Model Choice</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
         <li><a href="#accuracy">Token Accuracy</a></li>
         <li><a href="#corpus">Generated Corpus</a></li>
         <li><a href="#usage">Usage</a></li>
+        <li><a href="#benchmark">Benchmark</a></li>
     </ul>
 </div>
 
@@ -86,6 +89,29 @@
         </div>
     </div>
 </header>
+
+<!-- ==================== SECTION: BACKGROUND ==================== -->
+<section id="background">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Background</span>
+            <h2>KV caching and why it matters</h2>
+        </div>
+
+        <div class="fade-up" style="max-width: 800px;">
+            <p>Large language models process input text by computing key-value (KV) tensors at each attention layer. For a 10,000-token document on an 8B parameter model, this KV cache can consume hundreds of megabytes of GPU memory. When multiple requests share the same document prefix, recomputing these tensors from scratch is pure waste.</p>
+            <p style="margin-top: 16px;"><a href="https://github.com/LMCache/LMCache">LMCache</a> solves this by offloading computed KV tensors to remote storage &mdash; <a href="https://valkey.io">Valkey</a>, S3, or local disk &mdash; so subsequent requests can retrieve them instead of recomputing. This turns the expensive O(n&sup2;) prefill operation into a cache lookup, dramatically reducing time-to-first-token (TTFT) for repeated documents.</p>
+            <p style="margin-top: 16px;">LMCache plugs directly into <a href="https://github.com/vllm-project/vllm">vLLM</a> as a KV connector. When a request arrives, vLLM checks whether the KV cache for that prefix already exists in remote storage. If it does, the tensors are fetched and injected &mdash; skipping prefill entirely. If not, the tensors are computed normally and stored for future reuse.</p>
+        </div>
+
+        <div class="subsection fade-up" style="max-width: 800px;">
+            <h3>Why we built this corpus</h3>
+            <p>While optimizing KV cache offloading performance with <a href="https://valkey.io">Valkey</a> as the remote backend, we ran into a benchmarking problem: the only available test documents were synthetic <code class="code-inline">hi hi hi</code> sequences. The benchmark numbers looked great, but we couldn't trust them &mdash; real-world documents compress differently, produce different tensor distributions, and create different cache access patterns. We needed a reproducible corpus of realistic documents to get meaningful performance numbers.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
 
 <!-- ==================== SECTION: THE PROBLEM ==================== -->
 <section id="problem">
@@ -419,35 +445,23 @@ preamble.</span></code></pre>
         <!-- Fixes -->
         <div class="subsection fade-up">
             <h3>How we fixed it</h3>
-            <p style="margin-bottom: 20px;">The generator now loads the model's own HuggingFace tokenizer at startup and uses it for all counting:</p>
-            <div class="cards-grid">
-                <div class="card numbered-card">
-                    <div class="card-number">1</div>
-                    <div class="card-content">
-                        <h3>Local tokenizer</h3>
-                        <p><code class="code-inline">transformers.AutoTokenizer</code> gives exact token counts by tokenizing the actual document text, not by trusting API response metadata.</p>
-                    </div>
+            <p style="margin-bottom: 8px;">The generator now loads the model's own HuggingFace tokenizer at startup and uses it for all counting:</p>
+            <div class="fix-timeline">
+                <div class="fix-step" data-step="1">
+                    <h4>Local tokenizer</h4>
+                    <p><code class="code-inline">transformers.AutoTokenizer</code> gives exact token counts by tokenizing the actual document text, not by trusting API response metadata.</p>
                 </div>
-                <div class="card numbered-card">
-                    <div class="card-number">2</div>
-                    <div class="card-content">
-                        <h3>Thinking disabled at API level</h3>
-                        <p>Instead of stripping <code class="code-inline">&lt;think&gt;</code> blocks after the fact, the generator passes <code class="code-inline">chat_template_kwargs: {"enable_thinking": False}</code> via <code class="code-inline">extra_body</code>. This tells the model's chat template to skip reasoning entirely.</p>
-                    </div>
+                <div class="fix-step" data-step="2">
+                    <h4>Thinking disabled at API level</h4>
+                    <p>Instead of stripping <code class="code-inline">&lt;think&gt;</code> blocks after the fact, the generator passes <code class="code-inline">chat_template_kwargs: {"enable_thinking": False}</code> via <code class="code-inline">extra_body</code>. This tells the model's chat template to skip reasoning entirely.</p>
                 </div>
-                <div class="card numbered-card">
-                    <div class="card-number">3</div>
-                    <div class="card-content">
-                        <h3>Full-text re-counting</h3>
-                        <p>After each continuation, the script tokenizes the entire accumulated document, not just the new chunk. This avoids drift from summing per-response estimates.</p>
-                    </div>
+                <div class="fix-step" data-step="3">
+                    <h4>Full-text re-counting</h4>
+                    <p>After each continuation, the script tokenizes the entire accumulated document, not just the new chunk. This avoids drift from summing per-response estimates.</p>
                 </div>
-                <div class="card numbered-card">
-                    <div class="card-number">4</div>
-                    <div class="card-content">
-                        <h3>Encode-slice-decode trimming</h3>
-                        <p>Once the document reaches or exceeds the target, it's trimmed to exactly <code class="code-inline">token_target</code> tokens: encode to token IDs, slice to target length, decode back to text.</p>
-                    </div>
+                <div class="fix-step" data-step="4">
+                    <h4>Encode-slice-decode trimming</h4>
+                    <p>Once the document reaches or exceeds the target, it's trimmed to exactly <code class="code-inline">token_target</code> tokens: encode to token IDs, slice to target length, decode back to text.</p>
                 </div>
             </div>
         </div>

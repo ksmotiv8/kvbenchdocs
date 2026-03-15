@@ -544,17 +544,16 @@ section {
 /* --- Numbered Cards --- */
 .numbered-card {
     position: relative;
-    padding-left: 52px;
+    padding-left: 64px;
 }
 
 .numbered-card .card-number {
     position: absolute;
-    top: 32px;
-    left: 28px;
-    font-size: 1.125rem;
+    top: 28px;
+    left: 20px;
     font-weight: 700;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -562,10 +561,70 @@ section {
     background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
     color: #fff;
     font-size: 0.8125rem;
+    line-height: 1;
 }
 
 .numbered-card .card-content {
-    padding-left: 8px;
+    padding-left: 0;
+}
+
+/* --- Fix Timeline (How we fixed it) --- */
+.fix-timeline {
+    position: relative;
+    padding-left: 36px;
+    margin-top: 24px;
+}
+
+.fix-timeline::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--gradient-1), var(--gradient-2));
+    border-radius: 1px;
+}
+
+.fix-step {
+    position: relative;
+    padding: 0 0 32px 24px;
+}
+
+.fix-step:last-child {
+    padding-bottom: 0;
+}
+
+.fix-step::before {
+    content: attr(data-step);
+    position: absolute;
+    left: -28px;
+    top: 2px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    z-index: 1;
+}
+
+.fix-step h4 {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.fix-step p {
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.65;
 }
 
 /* --- Code Blocks --- */
