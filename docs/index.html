@@ -302,7 +302,7 @@ curl http://localhost:8000/health</code></pre>
                     <button class="prompt-tab-btn" onclick="switchPromptTab(this, 's1-legal')">Legal</button>
                 </div>
                 <div id="s1-medical" class="prompt-tab-panel active">
-                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                    <div class="code-block prompt-block" >
                         <span class="lang-label">Medical Stage 1 Prompt</span>
                         <pre><code class="language-none">You are a <span class="prompt-role">health informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of medical document
 scenarios that represent the mix of clinical documents in a typical US hospital
@@ -321,7 +321,7 @@ surgical, imaging, lab, specialty, and behavioral health settings.
                     </div>
                 </div>
                 <div id="s1-legal" class="prompt-tab-panel">
-                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                    <div class="code-block prompt-block" >
                         <span class="lang-label">Legal Stage 1 Prompt</span>
                         <pre><code class="language-none">You are a <span class="prompt-role">legal informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of legal document
 scenarios that represent a diverse mix of legal documents produced across
@@ -355,7 +355,7 @@ regulatory, and advisory practice areas.
                     <button class="prompt-tab-btn" onclick="switchPromptTab(this, 's2-legal')">Legal</button>
                 </div>
                 <div id="s2-medical" class="prompt-tab-panel active">
-                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                    <div class="code-block prompt-block" >
                         <span class="lang-label">Medical Stage 2 Prompt</span>
                         <pre><code class="language-none">Write a complete, realistic <span class="prompt-format">{doc_type}</span> for a fictional patient.
 
@@ -383,7 +383,7 @@ Requirements:
                     </div>
                 </div>
                 <div id="s2-legal" class="prompt-tab-panel">
-                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                    <div class="code-block prompt-block" >
                         <span class="lang-label">Legal Stage 2 Prompt</span>
                         <pre><code class="language-none">Write a complete, realistic legal document based on the scenario below.
 

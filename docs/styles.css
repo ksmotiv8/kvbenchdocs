@@ -1519,34 +1519,31 @@ body.light .mobile-nav-overlay {
 }
 .prompt-tab-bar {
     display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 0;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 .prompt-tab-btn {
     padding: 8px 20px;
     font-family: var(--font);
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-tertiary);
-    background: transparent;
-    border: 1px solid transparent;
-    border-bottom: none;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
     cursor: pointer;
-    transition: color var(--transition), background var(--transition);
-    position: relative;
-    bottom: -1px;
+    transition: all var(--transition);
 }
 .prompt-tab-btn:hover {
-    color: var(--text-secondary);
-    background: rgba(255,255,255,0.03);
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
 }
 .prompt-tab-btn.active {
-    color: var(--accent-light);
-    background: var(--bg-card);
-    border-color: var(--border);
-    border-bottom-color: var(--bg-card);
+    background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+    border-color: transparent;
+    color: #fff;
 }
 .prompt-tab-panel {
     display: none;
