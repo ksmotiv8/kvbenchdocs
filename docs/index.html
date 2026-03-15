@@ -106,7 +106,7 @@
 
         <div class="subsection fade-up" style="max-width: 800px;">
             <h3>Why we built this corpus</h3>
-            <p>While optimizing KV cache offloading performance with <a href="https://valkey.io">Valkey</a> as the remote backend, we ran into a benchmarking problem: the KV cache benchmarks we were using (<a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a> and <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/multi_doc_qa/multi_doc_qa.py"><code class="code-inline">multi_doc_qa.py</code></a>) generate documents from synthetic <code class="code-inline">hi hi hi</code> sequences by default. LMCache does include a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/rag">RAG benchmark</a> that accepts real datasets and a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/multi_round_qa">multi-round QA benchmark</a> that supports <a href="https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered">ShareGPT conversations</a>, but the long-document benchmarks used for measuring offloading performance don't. The benchmark numbers looked great, but we couldn't trust them. Real-world documents compress differently, produce different tensor distributions, and create different cache access patterns. We needed a reproducible corpus of realistic documents to get meaningful performance numbers.</p>
+            <p>While optimizing KV cache offloading performance with <a href="https://valkey.io">Valkey</a> as the remote backend, we ran into a benchmarking problem: the KV cache benchmarks we were using (<a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a> and <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/multi_doc_qa/multi_doc_qa.py"><code class="code-inline">multi_doc_qa.py</code></a>) generate documents from synthetic <code class="code-inline">hi hi hi</code> sequences by default. LMCache does include a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/rag">RAG benchmark</a> that accepts real datasets and a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/multi_round_qa">multi-round QA benchmark</a> that supports <a href="https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered">ShareGPT conversations</a>, but the long-document benchmarks used for measuring offloading performance don't. The benchmark numbers looked great, but we couldn't trust them. We observed that compression ratios, tensor value distributions, and cache access patterns all changed materially when we moved from synthetic inputs to realistic text, and again when we moved from dummy weights to real trained weights. We needed a reproducible corpus of realistic documents to understand what performance actually looks like under representative conditions.</p>
         </div>
     </div>
 </section>
@@ -141,16 +141,16 @@
 
         <div class="cards-grid cards-grid-3 fade-up">
             <div class="card">
-                <h3>Compression Ratios</h3>
-                <p>KV cache connectors compress tensors (typically with zstd) before sending them to remote storage. A document with 2 unique tokens produces highly regular tensors that compress to nearly nothing. A medical note with 1,329 unique tokens compresses very differently.</p>
+                <h3>Compression Behavior</h3>
+                <p>KV cache connectors compress tensors (typically with Zstandard) before sending them to remote storage. In our experiments, repetitive inputs like <code class="code-inline">hi hi hi</code> yielded substantially higher compression ratios than realistic text. Benchmarks using only synthetic prompts can overestimate how much compression helps in a network-bound pipeline.</p>
             </div>
             <div class="card">
-                <h3>KV Tensor Diversity</h3>
-                <p>The key-value tensors produced by the attention mechanism reflect the input tokens. A monotonic <code class="code-inline">hi hi hi</code> sequence produces uniform tensors; clinical text with varied structure, numbers, and medical terminology produces tensors with much more variance.</p>
+                <h3>Activation Patterns</h3>
+                <p>Transformers do not produce identical activations for repeated tokens: positional encoding, attention mixing, and residual connections mean each position's KV tensors are distinct. However, highly repetitive inputs tend to produce more correlated activation patterns than diverse text, which can make the resulting tensors more compressible.</p>
             </div>
             <div class="card">
                 <h3>Cache Access Patterns</h3>
-                <p>Real workloads involve documents with different prefixes, shared terminology, and overlapping but not identical content. The <code class="code-inline">hi hi hi</code> pattern shares nothing meaningful between documents except the same two tokens.</p>
+                <p>Real workloads involve documents with different prefixes, shared terminology, and overlapping but not identical content. The <code class="code-inline">hi hi hi</code> pattern creates a workload that shares nothing meaningful between documents except the same two tokens, which is unlikely to represent production traffic.</p>
             </div>
         </div>
 
@@ -198,6 +198,24 @@
 
         <div class="analogy fade-up">
             <p>Benchmarking KV cache offloading with <code class="code-inline">hi hi hi</code> is like benchmarking a database with <code class="code-inline">SELECT 1</code>. The numbers come back fast, but they don't tell you how the system performs under realistic load.</p>
+        </div>
+
+        <!-- Compression behavior with real model outputs -->
+        <div class="subsection fade-up" style="max-width: 800px;">
+            <h3>Compression behavior with real model outputs</h3>
+            <p>When we first started working with LMCache, we followed the tutorial setup and used <code class="code-inline">--load-format dummy</code> to skip real weight loading. With dummy weights, KV tensors compressed extremely well with Zstandard. The numbers were encouraging.</p>
+            <p style="margin-top: 12px;">When we switched to Qwen3-8B-FP8 with real trained weights, naive Zstandard compression stopped helping much. Real model weights produce tensor values that behave more like high-entropy floating-point data. Where dummy weights might produce low-variance activations that compress easily, trained weights produce the kind of value distributions that general-purpose compressors struggle with.</p>
+            <p style="margin-top: 12px;">Separately, we observed that the choice of input text also affected compression. Prompts made of repetitive text like <code class="code-inline">hi hi hi</code> compressed better than realistic documents. This is <em>not</em> because repeated tokens produce identical activations. Transformers still compute different values at each position due to positional encoding, attention context, and residual connections. But repetitive inputs can produce more correlated activation patterns across positions, which gives the compressor more structure to exploit. Realistic documents with varied vocabulary, numeric values, abbreviations, and formatting produce less correlated activations and therefore weaker compression ratios.</p>
+            <p style="margin-top: 12px;">The net effect: benchmarks using dummy weights <em>or</em> highly repetitive prompts can both overestimate how much compression reduces bytes on the wire. For a system where KV cache offloading is network-bound, that difference matters.</p>
+        </div>
+
+        <!-- Making float tensors more compressible -->
+        <div class="subsection fade-up" style="max-width: 800px;">
+            <h3>Making float tensors more compressible</h3>
+            <p>Since naive Zstandard on raw FP16 tensor data wasn't giving us useful compression with real weights, we introduced bit shuffling as a pre-compression step.</p>
+            <p style="margin-top: 12px;">Each FP16 value is 16 bits: 1 sign bit, 5 exponent bits, and 10 mantissa bits. When stored as raw bytes, the interleaving of these fields makes the data look noisy to a byte-oriented compressor. Bit shuffling rearranges the data so that corresponding bit positions from consecutive values are grouped together: all the sign bits in one block, all the exponent bits together, then the mantissa bits. The exponent bits in particular tend to cluster within a narrow range for a given tensor, so grouping them exposes patterns that Zstandard can exploit effectively.</p>
+            <p style="margin-top: 12px;">We used AVX2 intrinsics to keep the shuffle and unshuffle operations fast enough that CPU time did not become the new bottleneck. The goal was to reduce bytes on the wire without simply moving the constraint from network to CPU.</p>
+            <p style="margin-top: 12px;">This is a practical tradeoff, not a silver bullet. Bitshuffle + Zstandard reduced transfer sizes enough to be useful on real model outputs, but the gains are more modest than what you'd see with dummy weights or synthetic inputs. That gap is exactly why we needed benchmarks that use realistic workloads.</p>
         </div>
     </div>
 </section>
@@ -687,7 +705,7 @@ preamble.</span></code></pre>
                     </tbody>
                 </table>
             </div>
-            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation, heavy on repeated drug names and dosages) to 16.5% (lab report, many distinct test names and numeric values). All documents are 640x more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%).</p>
+            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation, heavy on repeated drug names and dosages) to 16.5% (lab report, many distinct test names and numeric values). By token diversity alone, all documents are roughly 640x more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%). This does not map linearly to tensor-level differences, but it does mean the model processes a much wider range of input patterns.</p>
             <p style="margin-top: 12px;">Characters per token varies from 2.78 (medication reconciliation, with many short abbreviations and numbers) to 3.95 (discharge summary, with more natural prose). This variance is itself representative of real clinical text: different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
         </div>
 
@@ -882,7 +900,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
     --repeat-mode tile \
     --max-inflight-requests 4</code></pre>
             </div>
-            <p style="margin-top: 12px;">This replaces the default <code class="code-inline">hi hi hi...</code> generator with realistic medical documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.</p>
+            <p style="margin-top: 12px;">This replaces the default <code class="code-inline">hi hi hi...</code> generator with realistic medical documents, producing workloads that better represent the compression behavior and access patterns of production traffic.</p>
         </div>
     </div>
 </section>
