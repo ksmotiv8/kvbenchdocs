@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmarks &mdash; Inference Adventures</title>
+    <meta name="description" content="KV cache benchmark tool, methodology, and results. bench_kvcache.py for realistic vLLM + LMCache performance testing.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+</head>
+<body data-page="benchmarks">
+
+<!-- ==================== NAV ==================== -->
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">Inference <span class="accent">Adventures</span></a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="corpus.html">Corpus Generator</a></li>
+            <li><a href="benchmarks.html" class="nav-active">Benchmarks</a></li>
+        </ul>
+        <div class="nav-right">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-nav" aria-label="View on GitHub">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                GitHub
+            </a>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">&#9790;</button>
+            <button class="hamburger" id="hamburger" aria-label="Open menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Mobile Nav Overlay -->
+<div class="mobile-nav-overlay" id="mobile-nav">
+    <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="corpus.html">Corpus Generator</a></li>
+        <li><a href="benchmarks.html">Benchmarks</a></li>
+    </ul>
+</div>
+
+<!-- ==================== PAGE HERO ==================== -->
+<header class="hero" style="padding: 140px 0 60px;">
+    <div class="container">
+        <h1 class="fade-up"><span class="gradient-text">Benchmarks</span></h1>
+        <p class="subtitle fade-up">KV cache benchmark tooling, methodology, and results. A living page updated with new runs.</p>
+    </div>
+</header>
+
+<!-- ==================== SECTION: BENCHMARK TOOL ==================== -->
+<section id="tool">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Benchmark Tool</span>
+            <h2>bench_kvcache.py</h2>
+            <p>An improved KV cache benchmark that addresses limitations in LMCache's built-in <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a>. Supports loading the medical corpus directly, skipping warmup phases, and reporting detailed TTFT percentiles.</p>
+        </div>
+
+        <!-- How it differs -->
+        <div class="fade-up">
+            <h3>How it differs from LMCache benchmarks</h3>
+            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. The long-document and multi-document benchmarks generate documents using repeated <code class="code-inline">"hi"</code> tokens by default (2 unique tokens, 0.02% diversity). <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
+            <div class="cards-grid cards-grid-3 fade-up">
+                <div class="card">
+                    <h3>Corpus file support</h3>
+                    <p><code class="code-inline">--corpus-file</code> loads documents directly from the JSONL medical corpus instead of generating synthetic <code class="code-inline">hi hi hi</code> padding. Also supports 5 built-in text styles (mixed, technical, legal, conversation, narrative) when no corpus is provided.</p>
+                </div>
+                <div class="card">
+                    <h3>Independent concurrency</h3>
+                    <p>Separate <code class="code-inline">--warmup-concurrency</code> and <code class="code-inline">--query-concurrency</code> controls. LMCache uses a single setting for both phases, making it impossible to warm the cache serially while querying at high concurrency.</p>
+                </div>
+                <div class="card">
+                    <h3>Skip warmup</h3>
+                    <p><code class="code-inline">--skip-warmup</code> and <code class="code-inline">--skip-pre-warmup</code> flags let you benchmark against an already-warm cache. LMCache always runs warmup with no way to skip it.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="subsection fade-up">
+            <h3>Detailed metrics</h3>
+            <p style="margin-bottom: 16px;">Where LMCache reports only a trimmed mean TTFT, <code class="code-inline">bench_kvcache.py</code> reports a full statistical breakdown per phase:</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>bench_kvcache.py</th>
+                            <th>LMCache long_doc_qa.py</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TTFT min / max</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>TTFT p50 / p95 / p99</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>Trimmed mean</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: #4ade80;">Yes</td>
+                        </tr>
+                        <tr>
+                            <td>Throughput (prompts/s)</td>
+                            <td style="color: #4ade80;">Yes</td>
+                            <td style="color: var(--text-tertiary);">No</td>
+                        </tr>
+                        <tr>
+                            <td>CSV with config metadata</td>
+                            <td style="color: #4ade80;">Append-mode</td>
+                            <td>Separate files</td>
+                        </tr>
+                        <tr>
+                            <td>Visualization</td>
+                            <td style="color: #4ade80;">Histogram + scatter + CDF</td>
+                            <td>Gantt chart</td>
+                        </tr>
+                        <tr>
+                            <td>Timer precision</td>
+                            <td style="color: #4ade80;"><code class="code-inline">perf_counter</code></td>
+                            <td><code class="code-inline">time.time</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Hit/miss -->
+        <div class="subsection fade-up">
+            <h3>Realistic cache miss simulation</h3>
+            <p>The <code class="code-inline">--hit-ratio</code> flag controls what fraction of query-round requests are cache hits. Misses use entirely new documents with realistic vocabulary, not the same prompt with a random number prepended (which is what LMCache does). This produces more realistic mixed-workload benchmarks.</p>
+        </div>
+
+        <!-- Usage examples -->
+        <div class="subsection fade-up">
+            <h3>Running the benchmark</h3>
+            <div class="code-block">
+                <span class="lang-label">Bash</span>
+                <pre><code class="language-bash"># Run with the medical corpus
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --query-concurrency 4 \
+    --max-tokens 100 \
+    --csv results.csv
+
+# Skip warmup (cache already populated from a previous run)
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --skip-warmup \
+    --query-concurrency 8
+
+# Simulate 75% cache hit ratio
+python bench_kvcache.py \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file medical_docs_10000.jsonl \
+    --hit-ratio 0.75 \
+    --visualize results.png</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: METHODOLOGY ==================== -->
+<section id="methodology">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Methodology</span>
+            <h2>Test infrastructure</h2>
+            <p>Our benchmark runs use the following setup to ensure reproducible, isolated measurements.</p>
+        </div>
+
+        <div class="cards-grid fade-up">
+            <div class="card">
+                <h3>GPU Instance</h3>
+                <p>AWS <code class="code-inline">g6.8xlarge</code> with a single NVIDIA L4 (24 GB VRAM). vLLM serves Qwen3-8B-FP8 with <code class="code-inline">--gpu-memory-utilization 0.9</code>.</p>
+            </div>
+            <div class="card">
+                <h3>KV Cache Backend</h3>
+                <p>Valkey (Redis-compatible) running on a separate instance to isolate network latency from GPU computation. LMCache connects via the Valkey KV connector.</p>
+            </div>
+            <div class="card">
+                <h3>Corpus</h3>
+                <p>10 medical documents at 10,000 tokens each (99,999 total). Generated with the same Qwen3-8B-FP8 model used for benchmarking.</p>
+            </div>
+        </div>
+
+        <div class="subsection fade-up">
+            <h3>Test parameters</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Model</td><td>Qwen/Qwen3-8B-FP8</td></tr>
+                        <tr><td>Document length</td><td>10,000 tokens</td></tr>
+                        <tr><td>Output length</td><td>100 tokens</td></tr>
+                        <tr><td>Warmup concurrency</td><td>1 (serial)</td></tr>
+                        <tr><td>Query concurrency</td><td>1, 2, 4, 8</td></tr>
+                        <tr><td>Repeat count</td><td>3</td></tr>
+                        <tr><td>Timer</td><td><code class="code-inline">time.perf_counter()</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== SECTION: RESULTS ==================== -->
+<section id="results">
+    <div class="container">
+        <div class="section-intro fade-up">
+            <span class="section-tag">Results</span>
+            <h2>Benchmark results</h2>
+            <p>This section will be updated as we run benchmarks across different configurations. Check back for new data.</p>
+        </div>
+
+        <div class="fade-up">
+            <div class="analogy" style="text-align: center;">
+                <p style="font-style: normal; font-size: 1rem; color: var(--text-secondary);">Results from upcoming benchmark runs will be published here. We're currently running tests across multiple Valkey configurations and concurrency levels.</p>
+            </div>
+
+            <!-- Placeholder results table structure -->
+            <div class="subsection">
+                <h3>Expected format</h3>
+                <p style="margin-bottom: 16px;">Each benchmark run will report the following metrics:</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Configuration</th>
+                                <th class="text-right-head">TTFT p50</th>
+                                <th class="text-right-head">TTFT p95</th>
+                                <th class="text-right-head">TTFT p99</th>
+                                <th class="text-right-head">Throughput</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Baseline (no cache)</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                            </tr>
+                            <tr>
+                                <td>Valkey (local)</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                            </tr>
+                            <tr>
+                                <td>Valkey (remote)</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                            </tr>
+                            <tr>
+                                <td>Valkey + bitshuffle</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                                <td class="text-right" style="color: var(--text-tertiary);">&mdash;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ==================== CTA SECTION ==================== -->
+<section class="cta-section">
+    <div class="container">
+        <h2 class="fade-up">Run your own benchmarks</h2>
+        <p class="fade-up">Use the medical corpus with bench_kvcache.py to measure KV cache performance under realistic conditions.</p>
+        <div class="cta-buttons fade-up">
+            <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-primary">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                View on GitHub
+            </a>
+            <a href="corpus.html" class="btn-secondary">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                Corpus Generator
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+    <div class="container">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="nav-logo">Inference <span class="accent">Adventures</span></div>
+                <p>Synthetic medical document corpus for benchmarking KV cache offloading in vLLM + LMCache.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-col">
+                    <h4>Project</h4>
+                    <ul>
+                        <li><a href="index.html#problem">The Problem</a></li>
+                        <li><a href="index.html#model">Model Choice</a></li>
+                        <li><a href="corpus.html#how-it-works">How It Works</a></li>
+                        <li><a href="corpus.html#accuracy">Token Accuracy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="corpus.html#corpus">Generated Corpus</a></li>
+                        <li><a href="corpus.html#usage">Usage Guide</a></li>
+                        <li><a href="benchmarks.html">Benchmark Tool</a></li>
+                        <li><a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></li>
+                        <li><a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen3-8B-FP8</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Stack</h4>
+                    <ul>
+                        <li><a href="https://github.com/vllm-project/vllm">vLLM</a></li>
+                        <li><a href="https://github.com/LMCache/LMCache">LMCache</a></li>
+                        <li><a href="https://huggingface.co/docs/transformers">Transformers</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2025 Inference Adventures. Open source under MIT License.
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
