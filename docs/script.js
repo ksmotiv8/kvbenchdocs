@@ -2,6 +2,16 @@
    Medical Corpus Generator — Blog Site Scripts
    ============================================ */
 
+/* --- Prompt domain tab switcher --- */
+function switchPromptTab(btn, panelId) {
+    var bar = btn.parentElement;
+    var tabs = bar.parentElement;
+    bar.querySelectorAll('.prompt-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    tabs.querySelectorAll('.prompt-tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+}
+
 (function () {
     'use strict';
 

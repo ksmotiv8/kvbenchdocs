@@ -295,10 +295,16 @@ curl http://localhost:8000/health</code></pre>
         <!-- Stage 1 Detail -->
         <div class="subsection fade-up">
             <h3>Stage 1: Scenario generation</h3>
-            <p style="margin-bottom: 16px;">Each domain has its own Stage 1 prompt. The medical prompt asks for EHR document types; the legal prompt asks for litigation, transactional, regulatory, and advisory document types. Here is the medical prompt:</p>
-            <div class="code-block prompt-block">
-                <span class="lang-label">Prompt</span>
-                <pre><code class="language-none">You are a <span class="prompt-role">health informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of medical document
+            <p style="margin-bottom: 16px;">Each domain has its own Stage 1 prompt. The medical prompt asks for EHR document types; the legal prompt asks for litigation, transactional, regulatory, and advisory document types.</p>
+            <div class="prompt-tabs">
+                <div class="prompt-tab-bar">
+                    <button class="prompt-tab-btn active" onclick="switchPromptTab(this, 's1-medical')">Medical</button>
+                    <button class="prompt-tab-btn" onclick="switchPromptTab(this, 's1-legal')">Legal</button>
+                </div>
+                <div id="s1-medical" class="prompt-tab-panel active">
+                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                        <span class="lang-label">Medical Stage 1 Prompt</span>
+                        <pre><code class="language-none">You are a <span class="prompt-role">health informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of medical document
 scenarios that represent the mix of clinical documents in a typical US hospital
 EHR system. For each scenario provide:
 
@@ -312,13 +318,12 @@ Include at least <span class="prompt-number">12</span> scenario types spanning i
 surgical, imaging, lab, specialty, and behavioral health settings.
 
 <span class="prompt-instruction">Return ONLY the JSON array, no markdown fences, no explanation.</span></code></pre>
-            </div>
-            <p style="margin-top: 16px;">The model returns a JSON array of 12+ scenarios with weights. These weights are normalized to sum to 1.0, then used to allocate the requested number of documents across scenarios proportionally (e.g., if you ask for 15 docs and inpatient progress notes have weight 0.15, that scenario gets 2&ndash;3 documents).</p>
-
-            <p style="margin-top: 24px; margin-bottom: 16px;">The legal domain uses a different Stage 1 prompt that produces litigation, transactional, regulatory, and advisory scenarios:</p>
-            <div class="code-block prompt-block">
-                <span class="lang-label">Legal Stage 1 Prompt</span>
-                <pre><code class="language-none">You are a <span class="prompt-role">legal informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of legal document
+                    </div>
+                </div>
+                <div id="s1-legal" class="prompt-tab-panel">
+                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                        <span class="lang-label">Legal Stage 1 Prompt</span>
+                        <pre><code class="language-none">You are a <span class="prompt-role">legal informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of legal document
 scenarios that represent a diverse mix of legal documents produced across
 different practice areas and jurisdictions. For each scenario provide:
 
@@ -334,17 +339,25 @@ Include at least <span class="prompt-number">10</span> scenario types spanning l
 regulatory, and advisory practice areas.
 
 <span class="prompt-instruction">Return ONLY the JSON array, no markdown fences, no explanation.</span></code></pre>
+                    </div>
+                </div>
             </div>
-            <p style="margin-top: 16px;">Legal scenarios include extra fields (<code class="code-inline">context</code> and <code class="code-inline">parties</code>) that are passed into the Stage 2 prompt via <code class="code-inline">**scenario</code> unpacking, so each domain can define whatever scenario fields it needs.</p>
+            <p style="margin-top: 16px;">The model returns a JSON array of scenarios with weights, normalized to sum to 1.0, then used to allocate documents proportionally. Legal scenarios include extra fields (<code class="code-inline">context</code> and <code class="code-inline">parties</code>) passed via <code class="code-inline">**scenario</code> unpacking, so each domain can define whatever scenario fields it needs.</p>
         </div>
 
         <!-- Stage 2 Detail -->
         <div class="subsection fade-up">
             <h3>Stage 2: Document generation</h3>
-            <p style="margin-bottom: 16px;">Each domain has its own Stage 2 template. The medical prompt asks for clinical document structure; the legal prompt asks for formal legal language, clauses, and internal references. Here is the medical prompt:</p>
-            <div class="code-block prompt-block">
-                <span class="lang-label">Prompt</span>
-                <pre><code class="language-none">Write a complete, realistic <span class="prompt-format">{doc_type}</span> for a fictional patient.
+            <p style="margin-bottom: 16px;">Each domain has its own Stage 2 template. The medical prompt asks for clinical document structure; the legal prompt asks for formal legal language, clauses, and internal references.</p>
+            <div class="prompt-tabs">
+                <div class="prompt-tab-bar">
+                    <button class="prompt-tab-btn active" onclick="switchPromptTab(this, 's2-medical')">Medical</button>
+                    <button class="prompt-tab-btn" onclick="switchPromptTab(this, 's2-legal')">Legal</button>
+                </div>
+                <div id="s2-medical" class="prompt-tab-panel active">
+                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                        <span class="lang-label">Medical Stage 2 Prompt</span>
+                        <pre><code class="language-none">Write a complete, realistic <span class="prompt-format">{doc_type}</span> for a fictional patient.
 
 Setting: <span class="prompt-example">{setting}</span>
 Scenario: <span class="prompt-example">{title}</span>
@@ -367,12 +380,12 @@ Requirements:
 - This is document <span class="prompt-number">#{doc_number}</span> for this scenario. <span class="prompt-instruction">Use a different patient,
   different chief complaint, different findings, and different clinical course
   than any other document in this batch.</span></code></pre>
-            </div>
-
-            <p style="margin-top: 24px; margin-bottom: 16px;">The legal Stage 2 prompt uses the extra scenario fields (<code class="code-inline">{context}</code>, <code class="code-inline">{parties}</code>) to produce formal legal documents:</p>
-            <div class="code-block prompt-block">
-                <span class="lang-label">Legal Stage 2 Prompt</span>
-                <pre><code class="language-none">Write a complete, realistic legal document based on the scenario below.
+                    </div>
+                </div>
+                <div id="s2-legal" class="prompt-tab-panel">
+                    <div class="code-block prompt-block" style="border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);">
+                        <span class="lang-label">Legal Stage 2 Prompt</span>
+                        <pre><code class="language-none">Write a complete, realistic legal document based on the scenario below.
 
 Document type: <span class="prompt-format">{doc_type}</span>
 Title: <span class="prompt-example">{title}</span>
@@ -401,6 +414,8 @@ Content realism:
   <span class="prompt-number">{token_target}</span> tokens.
 - This is document <span class="prompt-number">#{doc_number}</span> for this scenario. <span class="prompt-instruction">Ensure it differs
   from other documents in structure, clause ordering, and specific terms.</span></code></pre>
+                    </div>
+                </div>
             </div>
         </div>
 
