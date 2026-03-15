@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Corpus Generator &mdash; Realistic Clinical Documents for KV Cache Benchmarks</title>
+    <title>Medical Corpus Generator: Realistic Clinical Documents for KV Cache Benchmarks</title>
     <meta name="description" content="Open-source synthetic medical document corpus for benchmarking KV cache offloading in vLLM + LMCache. LLM-generated clinical notes with exact token count control.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,13 +100,13 @@
 
         <div class="fade-up" style="max-width: 800px;">
             <p>Large language models process input text by computing key-value (KV) tensors at each attention layer. For a 10,000-token document on an 8B parameter model, this KV cache can consume hundreds of megabytes of GPU memory. When multiple requests share the same document prefix, recomputing these tensors from scratch is pure waste.</p>
-            <p style="margin-top: 16px;"><a href="https://github.com/LMCache/LMCache">LMCache</a> solves this by offloading computed KV tensors to remote storage &mdash; <a href="https://valkey.io">Valkey</a>, S3, or local disk &mdash; so subsequent requests can retrieve them instead of recomputing. This turns the expensive O(n&sup2;) prefill operation into a cache lookup, dramatically reducing time-to-first-token (TTFT) for repeated documents.</p>
-            <p style="margin-top: 16px;">LMCache plugs directly into <a href="https://github.com/vllm-project/vllm">vLLM</a> as a KV connector. When a request arrives, vLLM checks whether the KV cache for that prefix already exists in remote storage. If it does, the tensors are fetched and injected &mdash; skipping prefill entirely. If not, the tensors are computed normally and stored for future reuse.</p>
+            <p style="margin-top: 16px;"><a href="https://github.com/LMCache/LMCache">LMCache</a> solves this by offloading computed KV tensors to remote storage (Valkey, S3, or local disk) so subsequent requests can retrieve them instead of recomputing. This turns the expensive O(n&sup2;) prefill operation into a cache lookup, dramatically reducing time-to-first-token (TTFT) for repeated documents.</p>
+            <p style="margin-top: 16px;">LMCache plugs directly into <a href="https://github.com/vllm-project/vllm">vLLM</a> as a KV connector. When a request arrives, vLLM checks whether the KV cache for that prefix already exists in remote storage. If it does, the tensors are fetched and injected, skipping prefill entirely. If not, the tensors are computed normally and stored for future reuse.</p>
         </div>
 
         <div class="subsection fade-up" style="max-width: 800px;">
             <h3>Why we built this corpus</h3>
-            <p>While optimizing KV cache offloading performance with <a href="https://valkey.io">Valkey</a> as the remote backend, we ran into a benchmarking problem: the KV cache benchmarks we were using &mdash; <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a> and <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/multi_doc_qa/multi_doc_qa.py"><code class="code-inline">multi_doc_qa.py</code></a> &mdash; generate documents from synthetic <code class="code-inline">hi hi hi</code> sequences by default. LMCache does include a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/rag">RAG benchmark</a> that accepts real datasets and a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/multi_round_qa">multi-round QA benchmark</a> that supports <a href="https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered">ShareGPT conversations</a>, but the long-document benchmarks used for measuring offloading performance don't. The benchmark numbers looked great, but we couldn't trust them &mdash; real-world documents compress differently, produce different tensor distributions, and create different cache access patterns. We needed a reproducible corpus of realistic documents to get meaningful performance numbers.</p>
+            <p>While optimizing KV cache offloading performance with <a href="https://valkey.io">Valkey</a> as the remote backend, we ran into a benchmarking problem: the KV cache benchmarks we were using (<a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/long_doc_qa/long_doc_qa.py"><code class="code-inline">long_doc_qa.py</code></a> and <a href="https://github.com/LMCache/LMCache/blob/dev/benchmarks/multi_doc_qa/multi_doc_qa.py"><code class="code-inline">multi_doc_qa.py</code></a>) generate documents from synthetic <code class="code-inline">hi hi hi</code> sequences by default. LMCache does include a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/rag">RAG benchmark</a> that accepts real datasets and a <a href="https://github.com/LMCache/LMCache/tree/dev/benchmarks/multi_round_qa">multi-round QA benchmark</a> that supports <a href="https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered">ShareGPT conversations</a>, but the long-document benchmarks used for measuring offloading performance don't. The benchmark numbers looked great, but we couldn't trust them. Real-world documents compress differently, produce different tensor distributions, and create different cache access patterns. We needed a reproducible corpus of realistic documents to get meaningful performance numbers.</p>
         </div>
     </div>
 </section>
@@ -137,7 +137,7 @@
             <pre><code class="language-none">0 hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi hi ...</code></pre>
         </div>
 
-        <p class="fade-up" style="margin-top: 24px; margin-bottom: 24px;">The token count is accurate &mdash; the Qwen3-8B tokenizer encodes <code class="code-inline">"hi"</code> as a single token, so 10,000 repetitions produce 10,001 tokens. But the problem is what the tokens <em>represent</em>. The entire document contains only <span class="highlight">2 unique tokens</span>. This matters for KV cache benchmarks because:</p>
+        <p class="fade-up" style="margin-top: 24px; margin-bottom: 24px;">The token count is accurate: the Qwen3-8B tokenizer encodes <code class="code-inline">"hi"</code> as a single token, so 10,000 repetitions produce 10,001 tokens. But the problem is what the tokens <em>represent</em>. The entire document contains only <span class="highlight">2 unique tokens</span>. This matters for KV cache benchmarks because:</p>
 
         <div class="cards-grid cards-grid-3 fade-up">
             <div class="card">
@@ -197,7 +197,7 @@
         </div>
 
         <div class="analogy fade-up">
-            <p>Benchmarking KV cache offloading with <code class="code-inline">hi hi hi</code> is like benchmarking a database with <code class="code-inline">SELECT 1</code> &mdash; the numbers come back fast, but they don't tell you how the system performs under realistic load.</p>
+            <p>Benchmarking KV cache offloading with <code class="code-inline">hi hi hi</code> is like benchmarking a database with <code class="code-inline">SELECT 1</code>. The numbers come back fast, but they don't tell you how the system performs under realistic load.</p>
         </div>
     </div>
 </section>
@@ -210,7 +210,7 @@
         <div class="section-intro fade-up">
             <span class="section-tag">Model Choice</span>
             <h2>Open weights for full reproducibility</h2>
-            <p>We use <a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen/Qwen3-8B-FP8</a>, an open-weight model, for both document generation and benchmarking. Using an open model means anyone can reproduce the corpus exactly &mdash; same tokenizer, same generation behavior, same KV cache tensor shapes &mdash; without depending on a proprietary API.</p>
+            <p>We use <a href="https://huggingface.co/Qwen/Qwen3-8B-FP8">Qwen/Qwen3-8B-FP8</a>, an open-weight model, for both document generation and benchmarking. Using an open model means anyone can reproduce the corpus exactly (same tokenizer, same generation behavior, same KV cache tensor shapes) without depending on a proprietary API.</p>
         </div>
 
         <div class="cards-grid fade-up" style="margin-bottom: 40px;">
@@ -220,7 +220,7 @@
             </div>
             <div class="card">
                 <h3>Reproducible</h3>
-                <p>Same tokenizer, same generation behavior, same KV cache tensor shapes. No proprietary API dependency &mdash; anyone can reproduce the exact same corpus.</p>
+                <p>Same tokenizer, same generation behavior, same KV cache tensor shapes. No proprietary API dependency, so anyone can reproduce the exact same corpus.</p>
             </div>
             <div class="card">
                 <h3>OpenAI-Compatible API</h3>
@@ -276,7 +276,7 @@ curl http://localhost:8000/health</code></pre>
 
         <!-- Stage 1 Detail -->
         <div class="subsection fade-up">
-            <h3>Stage 1 &mdash; Scenario generation</h3>
+            <h3>Stage 1: Scenario generation</h3>
             <p style="margin-bottom: 16px;">The script sends a single prompt asking the model to define the corpus structure:</p>
             <div class="code-block prompt-block">
                 <span class="lang-label">Prompt</span>
@@ -300,7 +300,7 @@ surgical, imaging, lab, specialty, and behavioral health settings.
 
         <!-- Stage 2 Detail -->
         <div class="subsection fade-up">
-            <h3>Stage 2 &mdash; Document generation</h3>
+            <h3>Stage 2: Document generation</h3>
             <p style="margin-bottom: 16px;">For each allocated document, the script sends a generation prompt:</p>
             <div class="code-block prompt-block">
                 <span class="lang-label">Prompt</span>
@@ -348,7 +348,7 @@ preamble.</span></code></pre>
         <div class="section-intro fade-up">
             <span class="section-tag">Token Count Accuracy</span>
             <h2>Solving the token count problem</h2>
-            <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially &mdash; one word, one token, repeat N times. But when generating realistic clinical documents with an LLM, token count accuracy became a significant problem.</p>
+            <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially: one word, one token, repeat N times. But when generating realistic clinical documents with an LLM, token count accuracy became a significant problem.</p>
         </div>
 
         <!-- Initial approach -->
@@ -429,7 +429,7 @@ preamble.</span></code></pre>
                     <div class="card-number">2</div>
                     <div class="card-content">
                         <h3>Character-ratio heuristics</h3>
-                        <p>The initial script tried to compensate by estimating "real" tokens using a characters-per-token ratio. This heuristic was unreliable &mdash; medical text has highly variable token density (abbreviations like "CBC" are 1 token, drug names like "acetaminophen" are 3&ndash;4 tokens).</p>
+                        <p>The initial script tried to compensate by estimating "real" tokens using a characters-per-token ratio. This heuristic was unreliable because medical text has highly variable token density (abbreviations like "CBC" are 1 token, drug names like "acetaminophen" are 3&ndash;4 tokens).</p>
                     </div>
                 </div>
                 <div class="card numbered-card">
@@ -687,8 +687,8 @@ preamble.</span></code></pre>
                     </tbody>
                 </table>
             </div>
-            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation &mdash; heavy on repeated drug names and dosages) to 16.5% (lab report &mdash; many distinct test names and numeric values). All documents are 640x more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%).</p>
-            <p style="margin-top: 12px;">Characters per token varies from 2.78 (medication reconciliation, with many short abbreviations and numbers) to 3.95 (discharge summary, with more natural prose). This variance is itself representative of real clinical text &mdash; different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
+            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation, heavy on repeated drug names and dosages) to 16.5% (lab report, many distinct test names and numeric values). All documents are 640x more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%).</p>
+            <p style="margin-top: 12px;">Characters per token varies from 2.78 (medication reconciliation, with many short abbreviations and numbers) to 3.95 (discharge summary, with more natural prose). This variance is itself representative of real clinical text: different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
         </div>
 
         <!-- Document Types Table -->
@@ -863,7 +863,7 @@ python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
 # Skip the manifest CSV
 python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
             </div>
-            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes &mdash; complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
+            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes, complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
         </div>
 
         <!-- Benchmark integration -->
@@ -901,7 +901,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
         <!-- How it differs -->
         <div class="fade-up">
             <h3>How it differs from LMCache benchmarks</h3>
-            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. The long-document and multi-document benchmarks generate documents using repeated <code class="code-inline">"hi"</code> tokens by default &mdash; 2 unique tokens, 0.02% diversity. <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
+            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. The long-document and multi-document benchmarks generate documents using repeated <code class="code-inline">"hi"</code> tokens by default (2 unique tokens, 0.02% diversity). <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
             <div class="cards-grid cards-grid-3 fade-up">
                 <div class="card">
                     <h3>Corpus file support</h3>
@@ -975,7 +975,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
         <!-- Hit/miss -->
         <div class="subsection fade-up">
             <h3>Realistic cache miss simulation</h3>
-            <p>The <code class="code-inline">--hit-ratio</code> flag controls what fraction of query-round requests are cache hits. Misses use entirely new documents with realistic vocabulary &mdash; not the same prompt with a random number prepended (which is what LMCache does). This produces more realistic mixed-workload benchmarks.</p>
+            <p>The <code class="code-inline">--hit-ratio</code> flag controls what fraction of query-round requests are cache hits. Misses use entirely new documents with realistic vocabulary, not the same prompt with a random number prepended (which is what LMCache does). This produces more realistic mixed-workload benchmarks.</p>
         </div>
 
         <!-- Usage examples -->
