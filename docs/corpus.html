@@ -52,6 +52,17 @@
     </div>
 </header>
 
+<!-- ==================== SECTION: WHY THESE DOMAINS ==================== -->
+<section id="motivation">
+    <div class="container">
+        <div class="fade-up" style="max-width: 800px;">
+            <p>KV cache benchmarks need documents that behave like real workloads: varied vocabulary, mixed formatting, and the kind of token distributions that stress compression and cache access patterns in ways that synthetic <code class="code-inline">hi hi hi</code> text never will. We started with medical documents because clinical notes are a natural fit &mdash; they combine dense abbreviations, numeric lab values, structured sections, and narrative prose, all in a single document. That mix produces diverse token patterns and realistic tensor value distributions. We added legal documents as a second domain to validate that the generation pipeline generalizes: legal text has its own structure (clauses, cross-references, formal phrasing) and its own compression characteristics. Supporting multiple domains also lets us test whether benchmark results are sensitive to corpus choice, or whether the key finding &mdash; that realistic text behaves differently from synthetic text &mdash; holds across document types.</p>
+        </div>
+    </div>
+</section>
+
+<hr class="section-divider">
+
 <!-- ==================== SECTION: HOW IT WORKS ==================== -->
 <section id="how-it-works">
     <div class="container">
