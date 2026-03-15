@@ -46,7 +46,7 @@ def extract_text(item: dict) -> str:
     """Extract the document text from a JSONL item.
 
     Supports formats:
-      - {"document": "..."}               (gen_medical_docs.py)
+      - {"document": "..."}               (legacy JSONL format)
       - {"messages": [{"role":..., "content":...}, ...]}  (gen_domain_docs.py)
       - {"text": "..."}                   (generic)
       - {"content": "..."}               (generic)

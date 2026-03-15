@@ -274,7 +274,7 @@ curl http://localhost:8000/health</code></pre>
         <div class="section-intro fade-up">
             <span class="section-tag">How It Works</span>
             <h2>Two-stage generation</h2>
-            <p>The generator (<code class="code-inline">gen_medical_docs.py</code>) connects to the running vLLM instance and works in two stages. First it generates a realistic distribution of clinical document types, then it writes each document with exact token count control.</p>
+            <p>The generator (<code class="code-inline">corpus/build_corpus.py</code>) connects to a running vLLM instance and works in two stages. Each domain (medical, legal) has its own prompt module with domain-specific Stage 1 and Stage 2 prompts. The pipeline itself is domain-agnostic: it loads the correct prompts based on <code class="code-inline">--domain</code>, generates scenarios, writes documents, and applies domain-specific noise.</p>
         </div>
 
         <!-- Stage Overview -->
@@ -282,20 +282,20 @@ curl http://localhost:8000/health</code></pre>
             <div class="card stage-card">
                 <div class="stage-number">1</div>
                 <h3>Scenario Generation</h3>
-                <p>Ask the LLM to define a realistic mix of clinical document types, like you'd see in a real hospital EHR system.</p>
+                <p>Ask the LLM to define a realistic mix of document types for the chosen domain. Medical produces EHR document types; legal produces contracts, motions, briefs, and opinions.</p>
             </div>
             <div class="arrow">&rarr;</div>
             <div class="card stage-card">
                 <div class="stage-number">2</div>
                 <h3>Document Generation</h3>
-                <p>For each scenario, prompt the LLM to write a complete clinical document, continuing and trimming until it hits the exact target token count.</p>
+                <p>For each scenario, prompt the LLM to write a complete document using domain-specific prompts, continuing and trimming until it hits the exact target token count.</p>
             </div>
         </div>
 
         <!-- Stage 1 Detail -->
         <div class="subsection fade-up">
             <h3>Stage 1: Scenario generation</h3>
-            <p style="margin-bottom: 16px;">The script sends a single prompt asking the model to define the corpus structure:</p>
+            <p style="margin-bottom: 16px;">Each domain has its own Stage 1 prompt. The medical prompt asks for EHR document types; the legal prompt asks for litigation, transactional, regulatory, and advisory document types. Here is the medical prompt:</p>
             <div class="code-block prompt-block">
                 <span class="lang-label">Prompt</span>
                 <pre><code class="language-none">You are a <span class="prompt-role">health informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of medical document
@@ -314,12 +314,34 @@ surgical, imaging, lab, specialty, and behavioral health settings.
 <span class="prompt-instruction">Return ONLY the JSON array, no markdown fences, no explanation.</span></code></pre>
             </div>
             <p style="margin-top: 16px;">The model returns a JSON array of 12+ scenarios with weights. These weights are normalized to sum to 1.0, then used to allocate the requested number of documents across scenarios proportionally (e.g., if you ask for 15 docs and inpatient progress notes have weight 0.15, that scenario gets 2&ndash;3 documents).</p>
+
+            <p style="margin-top: 24px; margin-bottom: 16px;">The legal domain uses a different Stage 1 prompt that produces litigation, transactional, regulatory, and advisory scenarios:</p>
+            <div class="code-block prompt-block">
+                <span class="lang-label">Legal Stage 1 Prompt</span>
+                <pre><code class="language-none">You are a <span class="prompt-role">legal informatics expert</span>. Generate a <span class="prompt-format">JSON array</span> of legal document
+scenarios that represent a diverse mix of legal documents produced across
+different practice areas and jurisdictions. For each scenario provide:
+
+- <span class="prompt-key">"scenario_id"</span>: short snake_case identifier
+- <span class="prompt-key">"title"</span>: short descriptive title
+- <span class="prompt-key">"doc_type"</span>: the legal document type (e.g. <span class="prompt-example">"Contract"</span>, <span class="prompt-example">"Motion"</span>, <span class="prompt-example">"Legal Brief"</span>)
+- <span class="prompt-key">"setting"</span>: jurisdiction (e.g. <span class="prompt-example">"United States federal court"</span>)
+- <span class="prompt-key">"context"</span>: 2-3 sentences describing the legal context
+- <span class="prompt-key">"parties"</span>: the parties involved
+- <span class="prompt-key">"weight"</span>: estimated proportion (floats summing to <span class="prompt-number">1.0</span>)
+
+Include at least <span class="prompt-number">10</span> scenario types spanning litigation, transactional,
+regulatory, and advisory practice areas.
+
+<span class="prompt-instruction">Return ONLY the JSON array, no markdown fences, no explanation.</span></code></pre>
+            </div>
+            <p style="margin-top: 16px;">Legal scenarios include extra fields (<code class="code-inline">context</code> and <code class="code-inline">parties</code>) that are passed into the Stage 2 prompt via <code class="code-inline">**scenario</code> unpacking, so each domain can define whatever scenario fields it needs.</p>
         </div>
 
         <!-- Stage 2 Detail -->
         <div class="subsection fade-up">
             <h3>Stage 2: Document generation</h3>
-            <p style="margin-bottom: 16px;">For each allocated document, the script sends a generation prompt:</p>
+            <p style="margin-bottom: 16px;">Each domain has its own Stage 2 template. The medical prompt asks for clinical document structure; the legal prompt asks for formal legal language, clauses, and internal references. Here is the medical prompt:</p>
             <div class="code-block prompt-block">
                 <span class="lang-label">Prompt</span>
                 <pre><code class="language-none">Write a complete, realistic <span class="prompt-format">{doc_type}</span> for a fictional patient.
@@ -330,13 +352,55 @@ Target length: approximately <span class="prompt-number">{token_target}</span> t
 
 Requirements:
 - <span class="prompt-instruction">Invent realistic but fictional patient demographics, history, findings, and plans.</span>
-- Use proper medical terminology, abbreviations, and formatting.
-- Include all standard sections for this document type.
-- Include realistic vital signs, lab values, medication names and dosages.
-- <span class="prompt-instruction">Do NOT include any meta-commentary — output only the document itself.</span>
+- Use proper medical terminology, abbreviations, and formatting conventions
+  that would appear in an actual EHR system.
+- Include all standard sections for this document type, but <span class="prompt-instruction">vary their ordering
+  and depth naturally</span>. Not every document follows the same rigid template.
+- Include realistic vital signs, lab values with units and reference ranges,
+  medication names with dosages, routes, and frequencies.
+- <span class="prompt-instruction">Vary your writing style</span>: some sections should be terse shorthand (e.g.
+  "A&amp;Ox3, NAD, PERRL"), others narrative paragraphs, others structured lists.
+- Use a mix of abbreviations and spelled-out forms as a real clinician would.
+- <span class="prompt-instruction">Do NOT include any meta-commentary. Output only the document itself.</span>
 - Write continuously until you have produced a detailed, complete document of
   approximately <span class="prompt-number">{token_target}</span> tokens.
-- This is document <span class="prompt-number">#{doc_number}</span> for this scenario — make it distinct from others.</code></pre>
+- This is document <span class="prompt-number">#{doc_number}</span> for this scenario. <span class="prompt-instruction">Use a different patient,
+  different chief complaint, different findings, and different clinical course
+  than any other document in this batch.</span></code></pre>
+            </div>
+
+            <p style="margin-top: 24px; margin-bottom: 16px;">The legal Stage 2 prompt uses the extra scenario fields (<code class="code-inline">{context}</code>, <code class="code-inline">{parties}</code>) to produce formal legal documents:</p>
+            <div class="code-block prompt-block">
+                <span class="lang-label">Legal Stage 2 Prompt</span>
+                <pre><code class="language-none">Write a complete, realistic legal document based on the scenario below.
+
+Document type: <span class="prompt-format">{doc_type}</span>
+Title: <span class="prompt-example">{title}</span>
+Jurisdiction: <span class="prompt-example">{setting}</span>
+Context: <span class="prompt-example">{context}</span>
+Parties: <span class="prompt-example">{parties}</span>
+Target length: approximately <span class="prompt-number">{token_target}</span> tokens.
+
+Requirements:
+- <span class="prompt-instruction">Write in formal legal language appropriate to the document type.</span>
+- Use dense legal phrasing typical of real legal writing.
+- Use long paragraphs and complex sentence structures.
+- Include internal references such as sections, clauses, definitions,
+  or prior statements.
+
+Structural variation requirements:
+- <span class="prompt-instruction">Section headings should vary between documents.</span>
+- Section numbering style should vary (e.g. 1.1, Article I, Section A, (a)(i)).
+- <span class="prompt-instruction">Avoid repeating identical templates or clause blocks.</span>
+
+Content realism:
+- Use the fictional companies, agencies, or individuals from the scenario.
+- <span class="prompt-instruction">Do not reference real cases, real statutes, or real people.</span>
+- Do not include meta-commentary. Output only the document itself.
+- Write continuously until the document reaches approximately
+  <span class="prompt-number">{token_target}</span> tokens.
+- This is document <span class="prompt-number">#{doc_number}</span> for this scenario. <span class="prompt-instruction">Ensure it differs
+  from other documents in structure, clause ordering, and specific terms.</span></code></pre>
             </div>
         </div>
 
@@ -354,6 +418,19 @@ responses, or follow-up documentation. <span class="prompt-instruction">Output O
 preamble.</span></code></pre>
             </div>
             <p style="margin-top: 16px;">This loop repeats until the accumulated text reaches the target (within 2% tolerance), at which point it's trimmed to the exact token count.</p>
+        </div>
+
+        <!-- Dataset Realism -->
+        <div class="subsection fade-up">
+            <h3>Reducing repetition and adding realism</h3>
+            <p>LLM-generated documents tend to follow the same structural template when given the same prompt repeatedly. To reduce this effect, the generation prompts explicitly instruct the model to vary section ordering, mix terse shorthand with narrative paragraphs, and alternate between abbreviated and spelled-out terms.</p>
+            <p style="margin-top: 12px;">After generation, an optional noise-injection step applies controlled text perturbations at a configurable rate (~12% of lines). The noise is domain-specific:</p>
+            <ul style="margin-top: 8px; margin-bottom: 12px;">
+                <li><strong>Medical noise:</strong> abbreviation variation (Blood Pressure / BP), case variation, punctuation variation (BP: 120/80 vs BP 120/80), section heading swaps (Chief Complaint / CC / CHIEF COMPLAINT), and whitespace variation.</li>
+                <li><strong>Legal noise:</strong> section symbol insertion (Section 3.1 / &sect;3.1), heading variation (Section / ARTICLE / Clause / Sec.), capitalized defined terms (agreement / Agreement), citation format variation (Section 5.2 / Sec. 5.2 / &sect;5.2), and numbering style variation (1.1 / (a)).</li>
+            </ul>
+            <p>The goal is to approximate the natural inconsistency found in real documents without changing the substantive content. Noise is applied after generation, then the document is re-trimmed to preserve the exact target token count.</p>
+            <p style="margin-top: 12px;">The generation pipeline is domain-modular: each domain has its own prompt module under <code class="code-inline">corpus/generators/</code> and its own noise function in <code class="code-inline">corpus/noise.py</code>. Adding a new domain means defining scenario prompts, document prompts, and noise rules. Documents are generated once, written to <code class="code-inline">corpus/{domain}/</code> with a <code class="code-inline">metadata.json</code> manifest, and read from disk by the benchmark.</p>
         </div>
     </div>
 </section>
@@ -817,32 +894,39 @@ preamble.</span></code></pre>
             <h3>Generate a corpus</h3>
             <div class="code-block">
                 <span class="lang-label">Bash</span>
-                <pre><code class="language-bash"># 15 documents at exactly 10,000 tokens each
-python gen_medical_docs.py \
-    --api-base http://localhost:8000/v1 \
-    --sizes 10000 \
-    --docs-per-size 15
+                <pre><code class="language-bash"># 15 medical documents at exactly 10,000 tokens each (with noise)
+python -m corpus.build_corpus \
+    --domain medical \
+    --documents 15 \
+    --target-tokens 10000 \
+    --noise \
+    --api-base http://localhost:8000/v1
 
-# Multiple sizes (e.g., for testing different document lengths)
-python gen_medical_docs.py \
-    --api-base http://GPU_HOST:8000/v1 \
-    --sizes 1000,5000,10000 \
-    --docs-per-size 10 \
-    --output-dir ./corpus</code></pre>
+# 200 legal documents at 10,000 tokens each (with legal-specific noise)
+python -m corpus.build_corpus \
+    --domain legal \
+    --documents 200 \
+    --target-tokens 10000 \
+    --noise \
+    --api-base http://localhost:8000/v1</code></pre>
             </div>
-            <p style="margin-top: 12px;">Output: <code class="code-inline">medical_docs/medical_docs_10000.jsonl</code> (one JSON object per line). Generation takes ~7 minutes per document at 10K tokens on an L4 GPU.</p>
+            <p style="margin-top: 12px;">Output: <code class="code-inline">corpus/{domain}/doc_0000.txt</code> through <code class="code-inline">doc_NNNN.txt</code>, a benchmark-compatible JSONL file, and a <code class="code-inline">metadata.json</code> manifest. Generation takes ~7 minutes per document at 10K tokens on an L4 GPU.</p>
 
-            <p style="margin-top: 16px;">Each line contains:</p>
+            <p style="margin-top: 16px;">The metadata manifest contains:</p>
             <div class="code-block">
                 <span class="lang-label">JSON</span>
                 <pre><code class="language-json">{
-  "id": "ed_initial_note-10000-0",
-  "token_target": 10000,
-  "actual_tokens": 10000,
-  "scenario_id": "ed_initial_note",
-  "scenario_title": "Emergency Department Initial Note",
-  "doc_type": "ED Note",
-  "document": "**ED Note**\n\n**Patient Name:** James M. Harper\n..."
+  "domain": "medical",
+  "documents": 15,
+  "target_tokens": 10000,
+  "generator_model": "Qwen/Qwen3-8B-FP8",
+  "generation_date": "2025-03-15T...",
+  "noise_enabled": true,
+  "docs": [
+    {"id": 0, "filename": "doc_0000.txt", "target_tokens": 10000,
+     "actual_tokens": 10000, "tokens_before_noise": 10000,
+     "scenario_id": "ed_initial_note", "doc_type": "ED Note"}
+  ]
 }</code></pre>
             </div>
         </div>
@@ -881,7 +965,7 @@ python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
 # Skip the manifest CSV
 python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
             </div>
-            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes, complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
+            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes, complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments. (Note: <code class="code-inline">parse_corpus.py</code> works with the legacy JSONL format. The new <code class="code-inline">corpus/build_corpus.py</code> writes individual text files directly.)</p>
         </div>
 
         <!-- Benchmark integration -->

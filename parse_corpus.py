@@ -2,7 +2,7 @@
 """
 parse_corpus.py — Split a JSONL medical corpus into individual readable documents.
 
-Takes the JSONL output from gen_medical_docs.py and produces:
+Takes JSONL corpus output and produces:
   1. One .md file per document in a docs/ subdirectory
   2. A manifest.csv summarizing all documents (metadata, sections, word counts)
 
@@ -186,7 +186,7 @@ Examples:
     )
     parser.add_argument(
         "corpus",
-        help="Path to JSONL corpus file (output of gen_medical_docs.py)",
+        help="Path to JSONL corpus file",
     )
     parser.add_argument(
         "--output-dir",
