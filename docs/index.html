@@ -62,7 +62,7 @@
             Open Source &bull; Reproducible
         </div>
         <h1 class="fade-up">Realistic Medical Documents<br>for <span class="gradient-text">KV Cache Benchmarks</span></h1>
-        <p class="subtitle fade-up">Replace <code class="code-inline">hi hi hi</code> with real clinical notes. LLM-generated EHR documents with exact token count control for meaningful vLLM + LMCache benchmarks.</p>
+        <p class="subtitle fade-up">Replace <code class="code-inline">hi hi hi</code> with realistic clinical notes. LLM-generated EHR documents with exact token count control for meaningful vLLM + LMCache benchmarks.</p>
         <div class="hero-stats fade-up">
             <div class="stat-card">
                 <div class="stat-value">10K</div>
@@ -348,7 +348,7 @@ preamble.</span></code></pre>
         <div class="section-intro fade-up">
             <span class="section-tag">Token Count Accuracy</span>
             <h2>Solving the token count problem</h2>
-            <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially &mdash; one word, one token, repeat N times. But when generating real clinical documents with an LLM, token count accuracy became a significant problem.</p>
+            <p>The <code class="code-inline">hi hi hi</code> approach gets token counts right trivially &mdash; one word, one token, repeat N times. But when generating realistic clinical documents with an LLM, token count accuracy became a significant problem.</p>
         </div>
 
         <!-- Initial approach -->
@@ -561,10 +561,10 @@ preamble.</span></code></pre>
         <!-- Document Preview -->
         <div class="subsection fade-up">
             <h3>Preview the documents</h3>
-            <p style="margin-bottom: 16px;">Click a tab to preview the first ~150 lines of each document. Full documents are 10,000 tokens each.</p>
+            <p style="margin-bottom: 16px;">Click a tab to preview each document. Full documents are 10,000 tokens each.</p>
             <div class="doc-tabs" id="doc-tabs"></div>
             <div class="doc-preview" id="doc-preview"></div>
-            <p class="doc-truncated-notice" style="margin-top: 12px; font-size: 0.8125rem; color: var(--text-tertiary); text-align: center;">Showing first ~150 lines. Full document is 10,000 tokens.</p>
+            <p class="doc-truncated-notice" style="margin-top: 12px; font-size: 0.8125rem; color: var(--text-tertiary); text-align: center;">Showing first ~1,000 lines. Full document is 10,000 tokens.</p>
         </div>
 
         <!-- Full Diversity Table -->
@@ -863,7 +863,7 @@ python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
 # Skip the manifest CSV
 python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
             </div>
-            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like real clinical notes &mdash; complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
+            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes &mdash; complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.</p>
         </div>
 
         <!-- Benchmark integration -->
@@ -882,7 +882,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
     --repeat-mode tile \
     --max-inflight-requests 4</code></pre>
             </div>
-            <p style="margin-top: 12px;">This replaces the default <code class="code-inline">hi hi hi...</code> generator with real medical documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.</p>
+            <p style="margin-top: 12px;">This replaces the default <code class="code-inline">hi hi hi...</code> generator with realistic medical documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.</p>
         </div>
     </div>
 </section>
@@ -901,7 +901,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
         <!-- How it differs -->
         <div class="fade-up">
             <h3>How it differs from LMCache benchmarks</h3>
-            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. All of them generate documents using repeated <code class="code-inline">"hi"</code> tokens &mdash; 2 unique tokens, 0.02% diversity. <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
+            <p style="margin-bottom: 16px;">LMCache ships 7 benchmark tools. The long-document and multi-document benchmarks generate documents using repeated <code class="code-inline">"hi"</code> tokens by default &mdash; 2 unique tokens, 0.02% diversity. <code class="code-inline">bench_kvcache.py</code> replaces this with realistic content:</p>
             <div class="cards-grid cards-grid-3 fade-up">
                 <div class="card">
                     <h3>Corpus file support</h3>
