@@ -46,7 +46,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from openai import APIConnectionError, APITimeoutError, OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 
 # ---------------------------------------------------------------------------
 # Tokenizer — loaded once, used for exact token counting throughout
@@ -108,7 +108,9 @@ def _call_with_retry(client: OpenAI, max_retries: int = 3, **kwargs):
     for attempt in range(max_retries):
         try:
             return client.chat.completions.create(**kwargs)
-        except (APIConnectionError, APITimeoutError) as e:
+        except (APIConnectionError, APITimeoutError, APIStatusError) as e:
+            if isinstance(e, APIStatusError) and e.status_code < 500:
+                raise
             if attempt == max_retries - 1:
                 raise
             wait = 2 ** attempt

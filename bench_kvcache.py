@@ -641,8 +641,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Corpus file
     p.add_argument("--corpus-file", type=str, default=None,
-                    help="Path to JSONL corpus file (one JSON object per line with 'document' field). "
-                         "Overrides --num-documents, --document-length, and --doc-style.")
+                    help="Path to JSONL corpus file (e.g. corpus/medical/medical_docs_10000.jsonl "
+                         "or corpus/legal/legal_docs_10000.jsonl). Each line must have a 'document' "
+                         "field. Overrides --num-documents, --document-length, and --doc-style.")
 
     # Output
     p.add_argument("--csv", type=str, default=None,

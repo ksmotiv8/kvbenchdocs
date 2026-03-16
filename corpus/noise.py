@@ -383,7 +383,6 @@ def _legal_perturb_citation(line: str) -> str:
             f"Sec. {num}",
             f"\u00a7{num}",
             f"\u00a7 {num}",
-            f"Section {num}(a)",
         ]
         replacement = _rng.choice(variants)
         return line[:match.start()] + replacement + line[match.end():]

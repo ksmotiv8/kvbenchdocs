@@ -7,11 +7,12 @@ Each domain module must expose:
   REQUIRED_SCENARIO_KEYS: set — required keys in each scenario dict
 """
 
-from corpus.generators import legal, medical
+from corpus.generators import legal, medical, narrative
 
 DOMAINS = {
     "legal": legal,
     "medical": medical,
+    "narrative": narrative,
 }
 
 

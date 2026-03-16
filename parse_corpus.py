@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 """
-parse_corpus.py — Split a JSONL medical corpus into individual readable documents.
+parse_corpus.py — Split a JSONL document corpus into individual readable files.
 
-Takes JSONL corpus output and produces:
+Takes JSONL corpus output (medical, legal, or any domain) and produces:
   1. One .md file per document in a docs/ subdirectory
   2. A manifest.csv summarizing all documents (metadata, sections, word counts)
 
-The .md files are the raw clinical document text — formatted markdown that
-reads like real EHR notes (vital signs, histories, lab values, etc.).
-
 Usage:
-    # Basic — parse a corpus into docs/ next to the JSONL:
-    python parse_corpus.py medical_docs_10000.jsonl
+    # Medical corpus:
+    python parse_corpus.py corpus/medical/medical_docs_10000.jsonl
 
-    # Custom output directory:
-    python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
+    # Legal corpus:
+    python parse_corpus.py corpus/legal/legal_docs_10000.jsonl
 
-    # Also generate the manifest CSV:
-    python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed --manifest manifest.csv
+    # Custom output directory with manifest:
+    python parse_corpus.py corpus.jsonl --output-dir ./parsed --manifest manifest.csv
 """
 
 from __future__ import annotations
@@ -170,18 +167,18 @@ def parse_corpus(input_path: str, output_dir: Path, manifest_path: Path | None):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Split a JSONL medical corpus into individual readable documents.",
+        description="Split a JSONL document corpus into individual readable files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  # Parse corpus into docs/ subdirectory (next to the JSONL file):
-  python parse_corpus.py medical_docs_10000.jsonl
+  # Medical corpus:
+  python parse_corpus.py corpus/medical/medical_docs_10000.jsonl
+
+  # Legal corpus:
+  python parse_corpus.py corpus/legal/legal_docs_10000.jsonl
 
   # Custom output directory with manifest:
-  python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed --manifest manifest.csv
-
-  # Pipe into other tools:
-  python parse_corpus.py corpus.jsonl --output-dir /tmp/docs
+  python parse_corpus.py corpus.jsonl --output-dir ./parsed --manifest manifest.csv
 """,
     )
     parser.add_argument(
