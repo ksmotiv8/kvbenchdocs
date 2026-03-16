@@ -1,0 +1,269 @@
+{
+  "domain": "legal",
+  "documents": 15,
+  "target_tokens": 10000,
+  "generator_model": "Qwen/Qwen3-8B-FP8",
+  "generation_date": "2026-03-16T06:20:03.867608+00:00",
+  "noise_enabled": true,
+  "noise_rate": 0.12,
+  "jsonl_file": "legal_docs_10000.jsonl",
+  "scenarios": [
+    {
+      "scenario_id": "commercial_contract",
+      "title": "Software Licensing Agreement",
+      "doc_type": "Contract",
+      "setting": "United States federal court",
+      "context": "A tech startup seeks to license its proprietary software to a multinational corporation. The agreement includes terms on usage, payment, and termination.",
+      "parties": "TechNova Inc. and GlobalSystems Corp",
+      "weight": 0.14285714285714285
+    },
+    {
+      "scenario_id": "federal_motion",
+      "title": "Motion to Dismiss for Lack of Jurisdiction",
+      "doc_type": "Motion",
+      "setting": "United States federal court",
+      "context": "A plaintiff files a lawsuit against a defendant based in another state, arguing that the federal court lacks jurisdiction over the matter.",
+      "parties": "Greenfield Enterprises v. BlueWave Industries",
+      "weight": 0.10714285714285712
+    },
+    {
+      "scenario_id": "state_complaint",
+      "title": "Product Liability Complaint",
+      "doc_type": "Complaint",
+      "setting": "California state court",
+      "context": "A consumer sues a manufacturer for injuries caused by a defective product, alleging negligence and strict liability.",
+      "parties": "Sarah Mitchell v. EcoSafe Manufacturing",
+      "weight": 0.125
+    },
+    {
+      "scenario_id": "legal_brief",
+      "title": "Appellate Brief on Statutory Interpretation",
+      "doc_type": "Legal Brief",
+      "setting": "United States federal court",
+      "context": "An appellate court reviews a lower court's interpretation of a federal statute in a complex tax dispute.",
+      "parties": "TaxConsultants LLC v. Federal Revenue Authority",
+      "weight": 0.10714285714285712
+    },
+    {
+      "scenario_id": "regulation_document",
+      "title": "Data Privacy Regulation Proposal",
+      "doc_type": "Regulation",
+      "setting": "European regulatory body",
+      "context": "A European agency drafts new regulations to enhance consumer data protection in the digital economy.",
+      "parties": "European Data Protection Board",
+      "weight": 0.08928571428571429
+    },
+    {
+      "scenario_id": "nda_agreement",
+      "title": "Non-Disclosure Agreement",
+      "doc_type": "Corporate Agreement",
+      "setting": "International arbitration",
+      "context": "Two pharmaceutical companies sign an NDA to protect trade secrets during a joint research project.",
+      "parties": "PharmaLife Group and BioGen Innovations",
+      "weight": 0.10714285714285712
+    },
+    {
+      "scenario_id": "legal_memorandum",
+      "title": "Opinion on Antitrust Liability",
+      "doc_type": "Legal Memorandum",
+      "setting": "Corporate internal policy",
+      "context": "A legal team prepares a memorandum assessing the antitrust risks of a proposed merger between two market leaders.",
+      "parties": "Internal Legal Counsel for TechGlobal Inc.",
+      "weight": 0.08928571428571429
+    },
+    {
+      "scenario_id": "court_opinion",
+      "title": "Ruling on Constitutional Rights",
+      "doc_type": "Court Opinion",
+      "setting": "United States federal court",
+      "context": "A federal judge rules on the constitutionality of a state law restricting freedom of speech in public spaces.",
+      "parties": "Citizens for Free Expression v. State of Nevada",
+      "weight": 0.10714285714285712
+    },
+    {
+      "scenario_id": "deposition_summary",
+      "title": "Summary of Key Testimony",
+      "doc_type": "Deposition Summary",
+      "setting": "California state court",
+      "context": "A summary of a key witness's deposition in a personal injury case, highlighting contradictions in their statements.",
+      "parties": "John Reynolds v. AutoSafe Motors",
+      "weight": 0.07142857142857142
+    },
+    {
+      "scenario_id": "compliance_policy",
+      "title": "Whistleblower Protection Policy",
+      "doc_type": "Policy Document",
+      "setting": "Corporate internal policy",
+      "context": "A multinational corporation issues a policy to ensure internal reporting of unethical practices and protect whistleblowers.",
+      "parties": "GlobalTech Solutions Inc.",
+      "weight": 0.05357142857142856
+    }
+  ],
+  "docs": [
+    {
+      "id": 0,
+      "filename": "doc_0000.txt",
+      "scenario_id": "commercial_contract",
+      "scenario_title": "Software Licensing Agreement",
+      "doc_type": "Contract",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 1,
+      "filename": "doc_0001.txt",
+      "scenario_id": "commercial_contract",
+      "scenario_title": "Software Licensing Agreement",
+      "doc_type": "Contract",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 2,
+      "filename": "doc_0002.txt",
+      "scenario_id": "federal_motion",
+      "scenario_title": "Motion to Dismiss for Lack of Jurisdiction",
+      "doc_type": "Motion",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 3,
+      "filename": "doc_0003.txt",
+      "scenario_id": "federal_motion",
+      "scenario_title": "Motion to Dismiss for Lack of Jurisdiction",
+      "doc_type": "Motion",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 4,
+      "filename": "doc_0004.txt",
+      "scenario_id": "state_complaint",
+      "scenario_title": "Product Liability Complaint",
+      "doc_type": "Complaint",
+      "setting": "California state court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 5,
+      "filename": "doc_0005.txt",
+      "scenario_id": "state_complaint",
+      "scenario_title": "Product Liability Complaint",
+      "doc_type": "Complaint",
+      "setting": "California state court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 6,
+      "filename": "doc_0006.txt",
+      "scenario_id": "legal_brief",
+      "scenario_title": "Appellate Brief on Statutory Interpretation",
+      "doc_type": "Legal Brief",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 7,
+      "filename": "doc_0007.txt",
+      "scenario_id": "legal_brief",
+      "scenario_title": "Appellate Brief on Statutory Interpretation",
+      "doc_type": "Legal Brief",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 8,
+      "filename": "doc_0008.txt",
+      "scenario_id": "regulation_document",
+      "scenario_title": "Data Privacy Regulation Proposal",
+      "doc_type": "Regulation",
+      "setting": "European regulatory body",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 9,
+      "filename": "doc_0009.txt",
+      "scenario_id": "nda_agreement",
+      "scenario_title": "Non-Disclosure Agreement",
+      "doc_type": "Corporate Agreement",
+      "setting": "International arbitration",
+      "target_tokens": 10000,
+      "tokens_before_noise": 9997,
+      "actual_tokens": 9999
+    },
+    {
+      "id": 10,
+      "filename": "doc_0010.txt",
+      "scenario_id": "nda_agreement",
+      "scenario_title": "Non-Disclosure Agreement",
+      "doc_type": "Corporate Agreement",
+      "setting": "International arbitration",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 11,
+      "filename": "doc_0011.txt",
+      "scenario_id": "legal_memorandum",
+      "scenario_title": "Opinion on Antitrust Liability",
+      "doc_type": "Legal Memorandum",
+      "setting": "Corporate internal policy",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 12,
+      "filename": "doc_0012.txt",
+      "scenario_id": "court_opinion",
+      "scenario_title": "Ruling on Constitutional Rights",
+      "doc_type": "Court Opinion",
+      "setting": "United States federal court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 13,
+      "filename": "doc_0013.txt",
+      "scenario_id": "deposition_summary",
+      "scenario_title": "Summary of Key Testimony",
+      "doc_type": "Deposition Summary",
+      "setting": "California state court",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    },
+    {
+      "id": 14,
+      "filename": "doc_0014.txt",
+      "scenario_id": "compliance_policy",
+      "scenario_title": "Whistleblower Protection Policy",
+      "doc_type": "Policy Document",
+      "setting": "Corporate internal policy",
+      "target_tokens": 10000,
+      "tokens_before_noise": 10000,
+      "actual_tokens": 10000
+    }
+  ]
+}
