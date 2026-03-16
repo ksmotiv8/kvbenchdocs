@@ -413,8 +413,8 @@ preamble.</span></code></pre>
     <div class="container">
         <div class="section-intro fade-up">
             <span class="section-tag">Generated Corpus</span>
-            <h2>10 documents, 99,999 tokens</h2>
-            <p>The included corpus (<code class="code-inline">medical_docs_10000.jsonl</code>) contains 10 documents totaling 99,999 tokens. Stage 1 produced 12 scenarios; with 10 documents to allocate, the proportional weighting resulted in the following distribution:</p>
+            <h2>15 documents, 150,000 tokens</h2>
+            <p>The included corpus (<code class="code-inline">medical_docs_10000.jsonl</code>) contains 15 documents totaling 150,000 tokens. Stage 1 produced 12 scenarios; with 15 documents to allocate, the proportional weighting resulted in the following distribution:</p>
         </div>
 
         <!-- Category Cards -->
@@ -422,43 +422,43 @@ preamble.</span></code></pre>
             <div class="category-item">
                 <span class="cat-badge emergency">Emergency</span>
                 <div class="cat-text">
-                    <h4>Emergency Department (2 docs)</h4>
-                    <p>An ED initial assessment for a 41-year-old male presenting with severe abdominal pain, and a discharge summary for a patient treated for chest pain with cardiac workup.</p>
+                    <h4>Emergency Department (3 docs)</h4>
+                    <p>Two ED initial assessments and one discharge summary covering presentations from acute abdominal pain to cardiac workup.</p>
                 </div>
             </div>
             <div class="category-item">
                 <span class="cat-badge inpatient">Inpatient</span>
                 <div class="cat-text">
-                    <h4>Inpatient (3 docs)</h4>
-                    <p>Two daily progress notes tracking different patients through multi-day hospital stays, plus a medication reconciliation document listing current and home medications with dosage adjustments.</p>
+                    <h4>Inpatient (4 docs)</h4>
+                    <p>Two progress notes tracking patients through multi-day stays, one order set, and one inpatient discharge summary.</p>
                 </div>
             </div>
             <div class="category-item">
                 <span class="cat-badge outpatient">Outpatient</span>
                 <div class="cat-text">
-                    <h4>Outpatient (1 doc)</h4>
-                    <p>A primary care follow-up note for chronic disease management with lab review and medication titration.</p>
+                    <h4>Outpatient (2 docs)</h4>
+                    <p>Two primary care follow-up notes for chronic disease management with lab review and medication titration.</p>
                 </div>
             </div>
             <div class="category-item">
                 <span class="cat-badge surgical">Surgical</span>
                 <div class="cat-text">
-                    <h4>Surgical (1 doc)</h4>
-                    <p>A preoperative evaluation for an elective procedure, including anesthesia risk assessment and surgical planning.</p>
+                    <h4>Surgical (2 docs)</h4>
+                    <p>A preoperative evaluation with anesthesia risk assessment and a postoperative note with recovery documentation.</p>
                 </div>
             </div>
             <div class="category-item">
                 <span class="cat-badge diagnostics">Diagnostics</span>
                 <div class="cat-text">
                     <h4>Diagnostics (2 docs)</h4>
-                    <p>A multi-modality imaging report (CT, MRI, X-ray findings) and a comprehensive laboratory result report spanning CBC, CMP, coagulation, thyroid, and specialty panels.</p>
+                    <p>A radiology imaging report (CT, MRI, X-ray) and a comprehensive laboratory result report spanning CBC, CMP, coagulation, and specialty panels.</p>
                 </div>
             </div>
             <div class="category-item">
                 <span class="cat-badge specialty">Specialty</span>
                 <div class="cat-text">
-                    <h4>Specialty (1 doc)</h4>
-                    <p>A specialty clinical consultation note with detailed examination findings and treatment recommendations.</p>
+                    <h4>Specialty + Behavioral (2 docs)</h4>
+                    <p>A specialty referral note and a behavioral health intake assessment with psychiatric evaluation.</p>
                 </div>
             </div>
         </div>
@@ -475,7 +475,7 @@ preamble.</span></code></pre>
         <!-- Full Diversity Table -->
         <div class="subsection fade-up">
             <h3>Token count and diversity</h3>
-            <p style="margin-bottom: 16px;">All 10 documents verified with <code class="code-inline">verify_tokens.py</code> using the Qwen3-8B-FP8 tokenizer:</p>
+            <p style="margin-bottom: 16px;">All 15 documents verified with <code class="code-inline">verify_tokens.py</code> using the Qwen3-8B-FP8 tokenizer:</p>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -490,142 +490,66 @@ preamble.</span></code></pre>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="text-right">0</td>
-                            <td>ED Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,329</td>
-                            <td class="text-right">13.3%</td>
-                            <td class="text-right">38,202</td>
-                            <td class="text-right">3.82</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">1</td>
-                            <td>Discharge Summary</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,545</td>
-                            <td class="text-right">15.4%</td>
-                            <td class="text-right">39,466</td>
-                            <td class="text-right">3.95</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">2</td>
-                            <td>Progress Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,233</td>
-                            <td class="text-right">12.3%</td>
-                            <td class="text-right">32,571</td>
-                            <td class="text-right">3.26</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">3</td>
-                            <td>Progress Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">997</td>
-                            <td class="text-right">10.0%</td>
-                            <td class="text-right">32,451</td>
-                            <td class="text-right">3.25</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">4</td>
-                            <td>Medication Reconciliation</td>
-                            <td class="text-right">9,999</td>
-                            <td class="text-right">938</td>
-                            <td class="text-right">9.4%</td>
-                            <td class="text-right">27,787</td>
-                            <td class="text-right">2.78</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">5</td>
-                            <td>Progress Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,277</td>
-                            <td class="text-right">12.8%</td>
-                            <td class="text-right">36,548</td>
-                            <td class="text-right">3.65</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">6</td>
-                            <td>Preoperative Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">989</td>
-                            <td class="text-right">9.9%</td>
-                            <td class="text-right">28,426</td>
-                            <td class="text-right">2.84</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">7</td>
-                            <td>Imaging Report</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,466</td>
-                            <td class="text-right">14.7%</td>
-                            <td class="text-right">37,667</td>
-                            <td class="text-right">3.77</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">8</td>
-                            <td>Lab Report</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,652</td>
-                            <td class="text-right">16.5%</td>
-                            <td class="text-right">33,063</td>
-                            <td class="text-right">3.31</td>
-                        </tr>
-                        <tr>
-                            <td class="text-right">9</td>
-                            <td>Clinical Note</td>
-                            <td class="text-right">10,000</td>
-                            <td class="text-right">1,392</td>
-                            <td class="text-right">13.9%</td>
-                            <td class="text-right">39,090</td>
-                            <td class="text-right">3.91</td>
-                        </tr>
+                        <tr><td class="text-right">0</td><td>ED Note</td><td class="text-right">10,000</td><td class="text-right">1,262</td><td class="text-right">12.6%</td><td class="text-right">38,121</td><td class="text-right">3.81</td></tr>
+                        <tr><td class="text-right">1</td><td>ED Note</td><td class="text-right">10,000</td><td class="text-right">1,260</td><td class="text-right">12.6%</td><td class="text-right">39,416</td><td class="text-right">3.94</td></tr>
+                        <tr><td class="text-right">2</td><td>Discharge Summary</td><td class="text-right">10,000</td><td class="text-right">1,530</td><td class="text-right">15.3%</td><td class="text-right">35,961</td><td class="text-right">3.60</td></tr>
+                        <tr><td class="text-right">3</td><td>Progress Note</td><td class="text-right">10,000</td><td class="text-right">1,412</td><td class="text-right">14.1%</td><td class="text-right">33,168</td><td class="text-right">3.32</td></tr>
+                        <tr><td class="text-right">4</td><td>Progress Note</td><td class="text-right">10,000</td><td class="text-right">1,370</td><td class="text-right">13.7%</td><td class="text-right">35,428</td><td class="text-right">3.54</td></tr>
+                        <tr><td class="text-right">5</td><td>Order Set</td><td class="text-right">10,000</td><td class="text-right">1,122</td><td class="text-right">11.2%</td><td class="text-right">32,360</td><td class="text-right">3.24</td></tr>
+                        <tr><td class="text-right">6</td><td>Preoperative Note</td><td class="text-right">10,000</td><td class="text-right">1,392</td><td class="text-right">13.9%</td><td class="text-right">35,548</td><td class="text-right">3.55</td></tr>
+                        <tr><td class="text-right">7</td><td>Postoperative Note</td><td class="text-right">10,000</td><td class="text-right">1,393</td><td class="text-right">13.9%</td><td class="text-right">34,741</td><td class="text-right">3.47</td></tr>
+                        <tr><td class="text-right">8</td><td>Imaging Report</td><td class="text-right">10,000</td><td class="text-right">1,729</td><td class="text-right">17.3%</td><td class="text-right">38,006</td><td class="text-right">3.80</td></tr>
+                        <tr><td class="text-right">9</td><td>Lab Report</td><td class="text-right">10,000</td><td class="text-right">1,722</td><td class="text-right">17.2%</td><td class="text-right">35,437</td><td class="text-right">3.54</td></tr>
+                        <tr><td class="text-right">10</td><td>Progress Note</td><td class="text-right">10,000</td><td class="text-right">1,312</td><td class="text-right">13.1%</td><td class="text-right">40,761</td><td class="text-right">4.08</td></tr>
+                        <tr><td class="text-right">11</td><td>Progress Note</td><td class="text-right">10,000</td><td class="text-right">1,602</td><td class="text-right">16.0%</td><td class="text-right">37,052</td><td class="text-right">3.71</td></tr>
+                        <tr><td class="text-right">12</td><td>Referral Note</td><td class="text-right">10,000</td><td class="text-right">1,279</td><td class="text-right">12.8%</td><td class="text-right">42,844</td><td class="text-right">4.28</td></tr>
+                        <tr><td class="text-right">13</td><td>Intake Note</td><td class="text-right">10,000</td><td class="text-right">1,557</td><td class="text-right">15.6%</td><td class="text-right">37,504</td><td class="text-right">3.75</td></tr>
+                        <tr><td class="text-right">14</td><td>Discharge Summary</td><td class="text-right">10,000</td><td class="text-right">1,418</td><td class="text-right">14.2%</td><td class="text-right">42,073</td><td class="text-right">4.21</td></tr>
                         <tr class="row-highlight">
                             <td class="text-right"></td>
                             <td>Mean</td>
-                            <td class="text-right">9,999</td>
-                            <td class="text-right">1,281</td>
-                            <td class="text-right">12.8%</td>
-                            <td class="text-right">34,527</td>
-                            <td class="text-right">3.45</td>
+                            <td class="text-right">10,000</td>
+                            <td class="text-right">1,424</td>
+                            <td class="text-right">14.2%</td>
+                            <td class="text-right">37,228</td>
+                            <td class="text-right">3.72</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <p style="margin-top: 20px;">Token diversity ranges from 9.4% (medication reconciliation, heavy on repeated drug names and dosages) to 16.5% (lab report, many distinct test names and numeric values). By token diversity alone, all documents are roughly 640× more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%). Token diversity does not directly translate to tensor-level diversity, but it does indicate that the model processes a wider range of lexical inputs than the synthetic benchmark.</p>
-            <p style="margin-top: 12px;">Characters per token varies from 2.78 (medication reconciliation, with many short abbreviations and numbers) to 3.95 (discharge summary, with more natural prose). This variance is itself representative of real clinical text: different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
+            <p style="margin-top: 20px;">Token diversity ranges from 11.2% (order set, heavy on repeated medication names and dosages) to 17.3% (imaging report, many distinct anatomical terms and numeric measurements). By token diversity alone, all documents are roughly 700× more diverse than the <code class="code-inline">hi hi hi</code> baseline (0.02%). Token diversity does not directly translate to tensor-level diversity, but it does indicate that the model processes a wider range of lexical inputs than the synthetic benchmark.</p>
+            <p style="margin-top: 12px;">Characters per token varies from 3.24 (order set, with many short abbreviations and numbers) to 4.28 (referral note, with more natural prose). This variance is itself representative of real clinical text: different document types have different mixes of medical abbreviations, drug names, numeric lab values, and narrative text.</p>
         </div>
 
         <!-- Document Types Table -->
         <div class="subsection fade-up">
             <h3>Document types in the corpus</h3>
-            <p style="margin-bottom: 16px;">The LLM generates a realistic mix of clinical document types. A typical run produces:</p>
+            <p style="margin-bottom: 16px;">The included 15-document corpus contains 10 distinct document types across 6 clinical settings:</p>
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
                             <th>Document Type</th>
                             <th>Setting</th>
-                            <th class="text-right-head">Proportion</th>
+                            <th class="text-right-head">Count</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>ED Initial Note</td><td>Emergency Department</td><td class="text-right">~12%</td></tr>
-                        <tr><td>ED Discharge Summary</td><td>Emergency Department</td><td class="text-right">~8%</td></tr>
-                        <tr><td>Inpatient Progress Note</td><td>Inpatient</td><td class="text-right">~15%</td></tr>
-                        <tr><td>Medication Reconciliation</td><td>Inpatient</td><td class="text-right">~7%</td></tr>
-                        <tr><td>Outpatient Progress Note</td><td>Primary Care</td><td class="text-right">~10%</td></tr>
-                        <tr><td>Surgical Preoperative Note</td><td>Surgery</td><td class="text-right">~6%</td></tr>
-                        <tr><td>Surgical Postoperative Note</td><td>Surgery</td><td class="text-right">~5%</td></tr>
-                        <tr><td>Imaging Report</td><td>Radiology</td><td class="text-right">~9%</td></tr>
-                        <tr><td>Laboratory Result Report</td><td>Lab</td><td class="text-right">~8%</td></tr>
-                        <tr><td>Specialty Clinical Note</td><td>Specialty</td><td class="text-right">~7%</td></tr>
-                        <tr><td>Behavioral Health Intake</td><td>Behavioral Health</td><td class="text-right">~5%</td></tr>
-                        <tr><td>Discharge Instructions</td><td>Inpatient</td><td class="text-right">~5%</td></tr>
+                        <tr><td>ED Note</td><td>Emergency Department</td><td class="text-right">2</td></tr>
+                        <tr><td>Discharge Summary</td><td>Inpatient</td><td class="text-right">2</td></tr>
+                        <tr><td>Progress Note</td><td>Inpatient / Primary Care</td><td class="text-right">4</td></tr>
+                        <tr><td>Order Set</td><td>Inpatient</td><td class="text-right">1</td></tr>
+                        <tr><td>Preoperative Note</td><td>Surgery</td><td class="text-right">1</td></tr>
+                        <tr><td>Postoperative Note</td><td>Surgery</td><td class="text-right">1</td></tr>
+                        <tr><td>Imaging Report</td><td>Radiology</td><td class="text-right">1</td></tr>
+                        <tr><td>Lab Report</td><td>Lab</td><td class="text-right">1</td></tr>
+                        <tr><td>Referral Note</td><td>Specialty</td><td class="text-right">1</td></tr>
+                        <tr><td>Intake Note</td><td>Behavioral Health</td><td class="text-right">1</td></tr>
+                        <tr class="row-highlight"><td></td><td>Total</td><td class="text-right">15</td></tr>
                     </tbody>
                 </table>
             </div>
-            <p style="margin-top: 16px;">The exact mix varies per run since Stage 1 is stochastic, but proportions approximate real-world EHR distributions.</p>
+            <p style="margin-top: 16px;">The exact mix varies per run since Stage 1 is stochastic. Progress notes are overrepresented because they appear across both inpatient and outpatient settings.</p>
         </div>
     </div>
 </section>
