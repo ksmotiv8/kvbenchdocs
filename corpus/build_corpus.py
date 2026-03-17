@@ -18,22 +18,22 @@ Usage:
     vllm serve Qwen/Qwen3-8B-FP8 --gpu-memory-utilization 0.9
 
     # Generate medical corpus:
-    python -m corpus.build_corpus \\
+    build-corpus \\
         --domain medical \\
         --documents 15 \\
         --target-tokens 10000 \\
         --api-base http://localhost:8000/v1
 
     # Generate with noise injection:
-    python -m corpus.build_corpus \\
+    build-corpus \\
         --domain medical \\
         --documents 15 \\
         --target-tokens 10000 \\
         --noise \\
         --api-base http://localhost:8000/v1
 
-Requirements:
-    pip install openai transformers
+Install:
+    uv sync
 """
 
 import argparse
@@ -64,15 +64,7 @@ def _load_tokenizer(model_name: str):
     global _tokenizer
     if _tokenizer is not None:
         return _tokenizer
-    try:
-        from transformers import AutoTokenizer
-    except ImportError:
-        print(
-            "ERROR: transformers is required for exact token counting.\n"
-            "  pip install transformers",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    from transformers import AutoTokenizer
     print(f"Loading tokenizer: {model_name} ...", file=sys.stderr)
     _tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     print(f"  vocab_size={_tokenizer.vocab_size}", file=sys.stderr)
@@ -478,8 +470,8 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  python -m corpus.build_corpus --domain medical --documents 15 --target-tokens 10000
-  python -m corpus.build_corpus --domain medical --documents 15 --target-tokens 10000 --noise
+  build-corpus --domain medical --documents 15 --target-tokens 10000
+  build-corpus --domain medical --documents 15 --target-tokens 10000 --noise
 """,
     )
     parser.add_argument(

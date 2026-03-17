@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
-"""
-verify_tokens.py — Verify token counts in a JSONL document corpus.
+"""Verify token counts in a JSONL document corpus.
+
+Entry point: verify-tokens (after ``uv sync``)
 
 Tokenizes each document using the target model's tokenizer and reports
 actual token counts vs recorded estimates. Works with any JSONL corpus
 that has a "document" or "messages" field.
 
 Usage:
-    # Basic — uses Qwen3-8B-FP8 tokenizer by default:
-    python verify_tokens.py medical_docs_10000.jsonl
-
-    # Specify a different model tokenizer:
-    python verify_tokens.py corpus.jsonl --model meta-llama/Llama-3-8B
-
-    # Include the system/user prompt wrapper (as the benchmark sees it):
-    python verify_tokens.py corpus.jsonl --include-prompt
-
-    # CSV output for further analysis:
-    python verify_tokens.py corpus.jsonl --csv > report.csv
+    verify-tokens medical_docs_10000.jsonl
+    verify-tokens corpus.jsonl --model meta-llama/Llama-3-8B
+    verify-tokens corpus.jsonl --include-prompt
+    verify-tokens corpus.jsonl --csv > report.csv
 """
 
 import argparse
@@ -27,15 +21,8 @@ from typing import List, Optional, Tuple
 
 
 def load_tokenizer(model_name: str):
-    """Load tokenizer from HuggingFace, with clear error on missing deps."""
-    try:
-        from transformers import AutoTokenizer
-    except ImportError:
-        print(
-            "ERROR: transformers not installed. Run: pip install transformers",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    """Load tokenizer from HuggingFace."""
+    from transformers import AutoTokenizer
     print(f"Loading tokenizer: {model_name} ...", file=sys.stderr)
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     print(f"  vocab_size={tokenizer.vocab_size}", file=sys.stderr)
@@ -47,7 +34,7 @@ def extract_text(item: dict) -> str:
 
     Supports formats:
       - {"document": "..."}               (legacy JSONL format)
-      - {"messages": [{"role":..., "content":...}, ...]}  (gen_domain_docs.py)
+      - {"messages": [{"role":..., "content":...}, ...]}  (build-corpus)
       - {"text": "..."}                   (generic)
       - {"content": "..."}               (generic)
     """

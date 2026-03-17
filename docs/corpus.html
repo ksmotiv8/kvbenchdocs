@@ -477,7 +477,7 @@ preamble.</span></code></pre>
         <!-- Full Diversity Table -->
         <div class="subsection fade-up">
             <h3>Token count and diversity</h3>
-            <p style="margin-bottom: 16px;">All 15 documents verified with <code class="code-inline">verify_tokens.py</code> using the Qwen3-8B-FP8 tokenizer:</p>
+            <p style="margin-bottom: 16px;">All 15 documents verified with <code class="code-inline">verify-tokens</code> using the Qwen3-8B-FP8 tokenizer:</p>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -720,7 +720,7 @@ preamble.</span></code></pre>
             <div class="code-block">
                 <span class="lang-label">Bash</span>
                 <pre><code class="language-bash"># 15 medical documents at exactly 10,000 tokens each (with noise)
-python -m corpus.build_corpus \
+build-corpus \
     --domain medical \
     --documents 15 \
     --target-tokens 10000 \
@@ -728,7 +728,7 @@ python -m corpus.build_corpus \
     --api-base http://localhost:8000/v1
 
 # 200 legal documents at 10,000 tokens each (with legal-specific noise)
-python -m corpus.build_corpus \
+build-corpus \
     --domain legal \
     --documents 200 \
     --target-tokens 10000 \
@@ -762,17 +762,17 @@ python -m corpus.build_corpus \
             <div class="code-block">
                 <span class="lang-label">Bash</span>
                 <pre><code class="language-bash"># Verify with the same tokenizer used for generation
-python verify_tokens.py medical_docs_10000.jsonl
+verify-tokens medical_docs_10000.jsonl
 
 # Check how many tokens a different model's tokenizer sees
 # (useful if you generated with Qwen but benchmark on a different model)
-python verify_tokens.py medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
+verify-tokens medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
 
 # Include the benchmark prompt wrapper (as long_doc_qa.py sends it)
-python verify_tokens.py medical_docs_10000.jsonl --include-prompt
+verify-tokens medical_docs_10000.jsonl --include-prompt
 
 # CSV output for spreadsheets
-python verify_tokens.py medical_docs_10000.jsonl --csv > report.csv</code></pre>
+verify-tokens medical_docs_10000.jsonl --csv > report.csv</code></pre>
             </div>
         </div>
 
@@ -782,15 +782,15 @@ python verify_tokens.py medical_docs_10000.jsonl --csv > report.csv</code></pre>
             <div class="code-block">
                 <span class="lang-label">Bash</span>
                 <pre><code class="language-bash"># Default: writes docs/ and manifest.csv next to the JSONL file
-python parse_corpus.py medical_docs_10000.jsonl
+parse-corpus medical_docs_10000.jsonl
 
 # Custom output directory
-python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
+parse-corpus medical_docs_10000.jsonl --output-dir ./parsed
 
 # Skip the manifest CSV
-python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
+parse-corpus medical_docs_10000.jsonl --no-manifest</code></pre>
             </div>
-            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes, complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments. (Note: <code class="code-inline">parse_corpus.py</code> works with the legacy JSONL format. The new <code class="code-inline">corpus/build_corpus.py</code> writes individual text files directly.)</p>
+            <p style="margin-top: 12px;">The individual <code class="code-inline">.md</code> files are formatted markdown that reads like authentic clinical notes, complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments. (Note: <code class="code-inline">parse-corpus</code> works with the legacy JSONL format. <code class="code-inline">build-corpus</code> writes individual text files directly.)</p>
         </div>
 
         <!-- Benchmark integration -->
@@ -820,7 +820,7 @@ python parse_corpus.py medical_docs_10000.jsonl --no-manifest</code></pre>
 <section class="cta-section">
     <div class="container">
         <h2 class="fade-up">Next: run benchmarks</h2>
-        <p class="fade-up">Now that you have a corpus, use <code class="code-inline">bench_kvcache.py</code> to measure KV cache performance under realistic conditions.</p>
+        <p class="fade-up">Now that you have a corpus, use <code class="code-inline">bench-kvcache</code> to measure KV cache performance under realistic conditions.</p>
         <div class="cta-buttons fade-up">
             <a href="benchmarks.html" class="btn-primary">
                 <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>

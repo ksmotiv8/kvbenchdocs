@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
-"""
-parse_corpus.py — Split a JSONL document corpus into individual readable files.
+"""Split a JSONL document corpus into individual readable files.
+
+Entry point: parse-corpus (after ``uv sync``)
 
 Takes JSONL corpus output (medical, legal, or any domain) and produces:
   1. One .md file per document in a docs/ subdirectory
   2. A manifest.csv summarizing all documents (metadata, sections, word counts)
 
 Usage:
-    # Medical corpus:
-    python parse_corpus.py corpus/medical/medical_docs_10000.jsonl
-
-    # Legal corpus:
-    python parse_corpus.py corpus/legal/legal_docs_10000.jsonl
-
-    # Custom output directory with manifest:
-    python parse_corpus.py corpus.jsonl --output-dir ./parsed --manifest manifest.csv
+    parse-corpus corpus/medical/medical_docs_10000.jsonl
+    parse-corpus corpus/legal/legal_docs_10000.jsonl
+    parse-corpus corpus.jsonl --output-dir ./parsed --manifest manifest.csv
 """
 
 from __future__ import annotations
@@ -171,14 +167,9 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Examples:
-  # Medical corpus:
-  python parse_corpus.py corpus/medical/medical_docs_10000.jsonl
-
-  # Legal corpus:
-  python parse_corpus.py corpus/legal/legal_docs_10000.jsonl
-
-  # Custom output directory with manifest:
-  python parse_corpus.py corpus.jsonl --output-dir ./parsed --manifest manifest.csv
+  parse-corpus corpus/medical/medical_docs_10000.jsonl
+  parse-corpus corpus/legal/legal_docs_10000.jsonl
+  parse-corpus corpus.jsonl --output-dir ./parsed --manifest manifest.csv
 """,
     )
     parser.add_argument(

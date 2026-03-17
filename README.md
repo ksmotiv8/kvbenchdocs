@@ -66,7 +66,7 @@ For the corpus included in this repo, we ran on an AWS `g6.8xlarge` instance (NV
 
 ## How it works
 
-### Two-stage generation (`gen_medical_docs.py`)
+### Two-stage generation (`build-corpus`)
 
 The generator connects to the running vLLM instance and works in two stages. First, it asks the LLM to act as a health informatics expert and produce a realistic distribution of clinical document types — the kind of mix you'd see in a real hospital EHR system. Then, for each document type in that distribution, it prompts the LLM to write a complete clinical document, continuing and trimming until it hits the exact target token count.
 
@@ -187,7 +187,7 @@ Each document reads like a real clinical note — formatted with standard EHR se
 
 ### Token count and diversity
 
-All 10 documents verified with `verify_tokens.py` using the Qwen3-8B-FP8 tokenizer:
+All 10 documents verified with `verify-tokens` using the Qwen3-8B-FP8 tokenizer:
 
 | Doc | Type                      | Tokens | Unique tokens | Diversity | Chars  | Chars/tok |
 |----:|---------------------------|-------:|--------------:|----------:|-------:|----------:|
@@ -210,20 +210,24 @@ Characters per token varies from 2.78 (medication reconciliation, with many shor
 ## What's in this folder
 
 ```
-kvbenchdocs/
+v2/
+├── pyproject.toml                   # Package config (uv sync to install)
 ├── README.md                        # This file
-├── gen_medical_docs.py              # Stage 1+2: LLM-based document generator
-├── parse_corpus.py                  # JSONL → individual .md files + manifest
-├── verify_tokens.py                 # Independent token count verification
-├── medical_docs_10000.jsonl         # Generated corpus (10 docs × 10K tokens)
 ├── manifest.csv                     # Metadata for all documents
-├── corpus/                          # Individual documents as readable .md files
-│   ├── ed_initial_note-10000-0.md
-│   ├── ed_discharge_summary-10000-1.md
-│   ├── inpatient_progress_note-10000-2.md
-│   └── ...
+├── corpus/                          # Python package + generated data
+│   ├── __init__.py
+│   ├── build_corpus.py              # Stage 1+2: LLM-based document generator
+│   ├── bench.py                     # KV cache benchmark tool
+│   ├── verify.py                    # Independent token count verification
+│   ├── parse.py                     # JSONL → individual .md files + manifest
+│   ├── noise.py                     # Controlled noise injection
+│   ├── generators/                  # Domain-specific generation modules
+│   ├── medical/                     # Generated medical corpus
+│   └── legal/                       # Generated legal corpus
 └── docs/                            # Blog website (served via GitHub Pages)
     ├── index.html
+    ├── corpus.html
+    ├── benchmarks.html
     ├── styles.css
     └── script.js
 ```
@@ -233,7 +237,12 @@ kvbenchdocs/
 ### Prerequisites
 
 ```bash
-pip install openai transformers
+# Clone and install (requires uv: https://docs.astral.sh/uv/)
+git clone <repo-url> && cd v2
+uv sync
+
+# Optional: install matplotlib for benchmark visualizations
+uv sync --extra viz
 ```
 
 A running vLLM instance (see [Setting up the model](#setting-up-the-model) above).
@@ -241,21 +250,23 @@ A running vLLM instance (see [Setting up the model](#setting-up-the-model) above
 ### Generate a corpus
 
 ```bash
-# 15 documents at exactly 10,000 tokens each
-python gen_medical_docs.py \
-    --api-base http://localhost:8000/v1 \
-    --sizes 10000 \
-    --docs-per-size 15
+# 15 medical documents at exactly 10,000 tokens each
+build-corpus \
+    --domain medical \
+    --documents 15 \
+    --target-tokens 10000 \
+    --api-base http://localhost:8000/v1
 
-# Multiple sizes (e.g., for testing different document lengths)
-python gen_medical_docs.py \
-    --api-base http://GPU_HOST:8000/v1 \
-    --sizes 1000,5000,10000 \
-    --docs-per-size 10 \
-    --output-dir ./corpus
+# Legal corpus with noise injection
+build-corpus \
+    --domain legal \
+    --documents 200 \
+    --target-tokens 10000 \
+    --noise \
+    --api-base http://localhost:8000/v1
 ```
 
-Output: `medical_docs/medical_docs_10000.jsonl` (one JSON object per line).
+Output: `corpus/{domain}/{domain}_docs_10000.jsonl` (one JSON object per line).
 
 Each line contains:
 ```json
@@ -275,37 +286,48 @@ Generation takes ~7 minutes per document at 10K tokens on an L4 GPU.
 ### Verify token counts
 
 ```bash
-# Verify with the same tokenizer used for generation
-python verify_tokens.py medical_docs_10000.jsonl
+verify-tokens medical_docs_10000.jsonl
 
 # Use a different model's tokenizer
-python verify_tokens.py medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
+verify-tokens medical_docs_10000.jsonl --model meta-llama/Llama-3-8B
 
 # Include the benchmark prompt wrapper (as long_doc_qa.py sends it)
-python verify_tokens.py medical_docs_10000.jsonl --include-prompt
+verify-tokens medical_docs_10000.jsonl --include-prompt
 
 # CSV output for spreadsheets
-python verify_tokens.py medical_docs_10000.jsonl --csv > report.csv
+verify-tokens medical_docs_10000.jsonl --csv > report.csv
 ```
 
 ### Parse into individual documents
 
 ```bash
-# Default: writes docs/ and manifest.csv next to the JSONL file
-python parse_corpus.py medical_docs_10000.jsonl
+parse-corpus medical_docs_10000.jsonl
 
 # Custom output directory
-python parse_corpus.py medical_docs_10000.jsonl --output-dir ./parsed
+parse-corpus medical_docs_10000.jsonl --output-dir ./parsed
 
 # Skip the manifest CSV
-python parse_corpus.py medical_docs_10000.jsonl --no-manifest
+parse-corpus medical_docs_10000.jsonl --no-manifest
 ```
 
 The individual `.md` files are formatted markdown that reads like real clinical notes — complete with patient demographics, vital signs, lab values, medication lists, imaging reports, and clinical assessments.
 
 ## Benchmark integration
 
-The JSONL corpus is consumed directly by LMCache's `long_doc_qa.py` benchmark via the `--corpus-file` flag:
+### bench-kvcache (included)
+
+```bash
+bench-kvcache \
+    --model Qwen/Qwen3-8B-FP8 \
+    --corpus-file corpus/medical/medical_docs_10000.jsonl \
+    --query-concurrency 4 \
+    --max-tokens 100 \
+    --csv results.csv
+```
+
+### LMCache long_doc_qa.py
+
+The JSONL corpus is also compatible with LMCache's `long_doc_qa.py` benchmark via `--corpus-file`:
 
 ```bash
 python benchmarks/long_doc_qa/long_doc_qa.py \
@@ -319,7 +341,18 @@ python benchmarks/long_doc_qa/long_doc_qa.py \
     --max-inflight-requests 4
 ```
 
-This replaces the default `hi hi hi...` generator with real medical documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.
+Both tools replace the default `hi hi hi...` generator with real documents, producing realistic KV cache access patterns for meaningful offloading benchmarks.
+
+## Entry points
+
+After `uv sync`, four commands are available:
+
+| Command | Description |
+|---------|-------------|
+| `build-corpus` | Generate domain-specific document corpus |
+| `bench-kvcache` | Run KV cache benchmark with TTFT analysis |
+| `verify-tokens` | Verify token counts in a JSONL corpus |
+| `parse-corpus` | Split JSONL corpus into individual .md files |
 
 ## Document types in the corpus
 

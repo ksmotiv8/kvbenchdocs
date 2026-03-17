@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""
-bench_kvcache.py -- Improved KV-cache benchmark based on LMCache long_doc_qa.
+"""Improved KV-cache benchmark based on LMCache long_doc_qa.
+
+Entry point: bench-kvcache (after ``uv sync``)
 
 Improvements over original:
   1. Realistic document generation with diverse vocabulary and styles
@@ -14,6 +15,7 @@ import argparse
 import asyncio
 import csv
 import hashlib
+import json
 import math
 import os
 import random
@@ -671,7 +673,6 @@ async def main() -> None:
 
     # Generate or load documents
     if args.corpus_file:
-        import json
         documents = []
         with open(args.corpus_file, "r") as f:
             for line in f:
@@ -818,5 +819,10 @@ async def main() -> None:
     await client.close()
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Synchronous entry point for console_scripts."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    cli()
