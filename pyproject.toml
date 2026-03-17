@@ -23,4 +23,5 @@ parse-corpus = "corpus.parse:main"
 verify-tokens = "corpus.verify:main"
 
 [tool.hatch.build.targets.wheel]
+packages = ["corpus"]
 exclude = ["corpus/medical", "corpus/legal"]
