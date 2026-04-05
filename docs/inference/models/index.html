@@ -88,7 +88,7 @@
     <div class="meta">2026-04-05 // NVIDIA L4 24GB // <a href="../">inference</a></div>
     <h1>Bonsai 1-bit and Gemma 4</h1>
     <p class="subtitle">
-      Two new architectures for low-latency inference, tested side by side. How to set them up, how I validated quality, what the results mean, and how to reproduce everything yourself.
+      Two new model architectures for low-latency inference, tested on the same GPU. Different runtimes, different quantization, same prompts. How to set them up, how I validated quality, what the results mean, and how to reproduce everything yourself.
     </p>
   </div>
 </header>
@@ -237,7 +237,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
 
     <h3>Instruction following: JSON output</h3>
     <p>
-      I asked for raw JSON with specific keys. Bonsai output <code>{"name":"Qwen","language":"Chinese"}</code>, which passes <code>json.loads()</code>. Gemma 4 wrapped it in a markdown code fence, which fails parsing. Same pattern: Gemma 4 defaults to human-readable formatting. Bonsai defaults to machine-parseable formatting.
+      I asked for raw JSON with specific keys. Bonsai output <code>{"name":"Qwen","language":"Chinese"}</code>, which passes <code>json.loads()</code>. Gemma 4 wrapped it in a markdown code fence, which fails parsing. Same pattern in my tests: Gemma 4 and Qwen produced human-readable formatting. Bonsai produced machine-parseable output. Two format-sensitive prompts is a small sample. Test this with your own prompts before relying on it.
     </p>
 
     <h3>Full results</h3>
@@ -263,7 +263,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
     </div>
 
     <p>
-      One revealing question: "What does AWQ stand for?" Only Gemma 4 got it right ("Activation-aware Weight Quantization"). Bonsai said "Approximate," Qwen said "Adaptive." Three model families, three wrong answers. Only Gemma 4 got it right (both E2B and E4B). One question is not enough to draw conclusions about how factual recall scales with model size, but it is a useful data point.
+      The AWQ question (covered in the validation section above) was the sharpest discriminator in this set. Remove that one question and the scores nearly converge. The quality differences in 12 prompts are suggestive, not conclusive.
     </p>
 
     <div class="callout">
@@ -278,7 +278,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
     <h2>Latency numbers</h2>
 
     <p>
-      All tests: same 8 prompts, concise system prompt, temperature 0.2, max 48 tokens, non-streaming, single request. Run the same test yourself:
+      All tests: same 8 prompts, concise system prompt, temperature 0.2, max 48 tokens, non-streaming, <strong>single request only</strong>. These numbers reflect single-user latency, not throughput under concurrent load. Each model runs on a different runtime with different optimization levels (CUDA graphs enabled for SGLang, not yet supported for Gemma 4 on vLLM). Treat the cross-model comparisons as directional. Run the same test yourself:
     </p>
     <pre><code>bash benchmarks/latency.sh 3001 default              # Bonsai
 bash benchmarks/latency.sh 3000 google/gemma-4-E2B-it # Gemma 4 E2B
