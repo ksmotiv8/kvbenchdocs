@@ -325,10 +325,26 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
       There is an important caveat: these models run on different runtimes (llama.cpp vs vLLM). The runtimes have different overhead profiles. I did not isolate how much of the speed difference comes from the runtime vs the model. A proper controlled comparison would run both on the same engine, which is not possible today because neither runtime supports both model formats.
     </p>
 
-    <h3>Why E4B is slower than E2B</h3>
+    <h3>When to use which model</h3>
     <p>
-      E4B has double the effective parameters (4.5B vs 2.3B) and 50% more layers (42 vs 35). The model file is 14.9 GB vs 9.5 GB. On the L4, that extra weight data costs 40.5 ms/tok vs 20.8 ms/tok. The quality improvement from E4B over E2B was negligible in my tests (same 10/12 score). E4B gives more detailed reasoning in its answers, but does not get more questions right. For latency-sensitive use cases on this hardware, E2B is the better choice.
+      The right model depends on where it sits in your system and what it needs to do. Here is how I think about the choice after running these tests.
     </p>
+
+    <p>
+      <strong>Bonsai 1-bit 8B: pipeline infrastructure.</strong> Use it when inference is a subroutine inside a larger system. Prompt classification, rewriting, routing, tool call generation, structured output. It is the fastest model I tested (8.3 ms/tok), uses the least VRAM (1.8 GB), and its outputs are machine-parseable without post-processing. It does not wrap code in markdown fences. It does not add explanatory text when you ask for JSON. If your system chains multiple LLM calls and each one needs to complete in under 150ms, Bonsai is currently the only model that consistently hits that target on an L4. The tradeoff is factual accuracy: it gets some knowledge questions wrong that both Gemma variants get right.
+    </p>
+
+    <p>
+      <strong>Gemma 4 E2B: knowledge-dense tasks on constrained hardware.</strong> Use it when you need factual accuracy from a small model that runs on edge hardware. E2B scored 5/5 on factual knowledge in my tests despite having only 2.3B effective parameters. Google's benchmarks show 60% on MMLU Pro and 67.4% on multilingual MMLU, which is strong for a model this size. It runs on a Raspberry Pi 5 at 7.6 tok/s. On an L4, it runs at 20.8 ms/tok. The tradeoff is VRAM: the Per-Layer Embeddings inflate total size to 9.5 GB BF16, which means it uses 19.9 GB on vLLM. That is a lot of VRAM for a 2.3B-effective model. It also wraps outputs in markdown formatting, which is a problem for pipeline use cases.
+    </p>
+
+    <p>
+      <strong>Gemma 4 E4B: complex reasoning where quality matters more than speed.</strong> Google's benchmarks show E4B at 42.5% on AIME 2026 math (vs 37.5% for E2B), 58.6% on GPQA Diamond (vs 43.4%), and 52% on LiveCodeBench (vs 44%). The 10-15 point gap on hard reasoning tasks is real. In my simpler test suite, that gap did not surface (both scored 10/12), but my prompts were not hard enough to discriminate. If your use case involves multi-step reasoning, graduate-level questions, or competitive coding, E4B is worth the latency cost (40.5 ms/tok). If your prompts are simple classification or short-form QA, E2B gives the same answers faster.
+    </p>
+
+    <div class="callout">
+      <p><strong>Summary.</strong> Bonsai for speed and format compliance. E2B for factual accuracy on edge. E4B for hard reasoning tasks where you can afford 40+ ms/tok. None of them is universally best.</p>
+    </div>
   </div>
 </section>
 
