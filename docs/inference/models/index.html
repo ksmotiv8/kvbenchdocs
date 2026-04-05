@@ -246,22 +246,28 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
         <thead>
           <tr>
             <th scope="col">Category</th>
+            <th scope="col">Bonsai 8B</th>
+            <th scope="col">Qwen 7B AWQ</th>
             <th scope="col">Gemma 4 E2B</th>
             <th scope="col">Gemma 4 E4B</th>
-            <th scope="col">Bonsai 8B</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td class="name">Factual Knowledge</td><td class="best">5/5</td><td class="best">5/5</td><td>3/5</td></tr>
-          <tr><td class="name">Reasoning</td><td class="val">2/2</td><td class="val">2/2</td><td class="val">2/2</td></tr>
-          <tr><td class="name">Code + Instruction</td><td>3/5</td><td>3/5</td><td class="best">5/5</td></tr>
-          <tr><td class="name">Total</td><td class="val">10/12</td><td class="val">10/12</td><td class="val">10/12</td></tr>
+          <tr><td class="name">Factual Knowledge</td><td>3/5</td><td>4/5</td><td class="best">5/5</td><td class="best">5/5</td></tr>
+          <tr><td class="name">Reasoning</td><td class="val">2/2</td><td class="val">2/2</td><td class="val">2/2</td><td class="val">2/2</td></tr>
+          <tr><td class="name">Code + Instruction</td><td class="best">5/5</td><td>3/5</td><td>3/5</td><td>3/5</td></tr>
+          <tr><td class="name">Total</td><td class="val">10/12</td><td class="val">9/12</td><td class="val">10/12</td><td class="val">10/12</td></tr>
+          <tr><td class="name">ms/tok</td><td class="best">8.4</td><td>19.1</td><td>20.8</td><td>40.5</td></tr>
         </tbody>
       </table>
     </div>
 
+    <p>
+      One revealing question: "What does AWQ stand for?" Only Gemma 4 got it right ("Activation-aware Weight Quantization"). Bonsai said "Approximate," Qwen said "Adaptive." Three model families, three wrong answers, and only the smallest (Gemma 4 E2B at 2.3B effective) got it right. Factual recall does not scale linearly with parameter count.
+    </p>
+
     <div class="callout">
-      <p><strong>Same overall score, different profiles.</strong> Gemma 4 knows more facts per parameter. Bonsai follows format instructions more literally. Pick the model based on what your system needs: knowledge retrieval or pipeline integration.</p>
+      <p><strong>Different profiles, not a ranking.</strong> Gemma 4 knows more facts per parameter. Bonsai follows format instructions literally (raw JSON, executable code). Qwen 7B AWQ is the practical middle: fastest conventional model, mature SGLang runtime, CUDA graphs enabled. Pick based on what your system needs.</p>
     </div>
   </div>
 </section>
@@ -282,7 +288,11 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
       <div class="chart-title">ms/tok on L4 // lower is better</div>
       <div class="bar-row">
         <div class="bar-label">Bonsai 1-bit 8B</div>
-        <div class="bar-track"><div class="bar-fill green" style="width: 20%;">8.3</div></div>
+        <div class="bar-track"><div class="bar-fill green" style="width: 21%;">8.4</div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">Qwen 7B AWQ</div>
+        <div class="bar-track"><div class="bar-fill cyan" style="width: 47%;">19.1</div></div>
       </div>
       <div class="bar-row">
         <div class="bar-label">Gemma 4 E2B</div>
@@ -292,7 +302,7 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
         <div class="bar-label">Gemma 4 E4B</div>
         <div class="bar-track"><div class="bar-fill red" style="width: 100%;">40.5</div></div>
       </div>
-      <div class="bar-note">NVIDIA L4, single request, short outputs, no CUDA graphs on Gemma 4</div>
+      <div class="bar-note">NVIDIA L4, single request, short outputs. CUDA graphs enabled for SGLang, disabled for vLLM (Gemma 4).</div>
     </div>
 
     <div class="table-wrap">
@@ -301,21 +311,26 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
           <tr>
             <th scope="col"><span class="sr-only">Metric</span></th>
             <th scope="col">Bonsai 1-bit 8B</th>
+            <th scope="col">Qwen 7B AWQ</th>
             <th scope="col">Gemma 4 E2B</th>
             <th scope="col">Gemma 4 E4B</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td class="name">ms/tok</td><td class="best">8.3</td><td>20.8</td><td>40.5</td></tr>
-          <tr><td class="name">Avg latency</td><td class="best">172ms</td><td>437ms</td><td>870ms</td></tr>
-          <tr><td class="name">VRAM</td><td class="best">~1.8 GB</td><td>19.9 GB</td><td>20.4 GB</td></tr>
-          <tr><td class="name">Model size</td><td class="best">1.15 GB</td><td>9.5 GB</td><td>14.9 GB</td></tr>
-          <tr><td class="name">Effective params</td><td>8.19B</td><td>2.3B</td><td>4.5B</td></tr>
-          <tr><td class="name">Runtime</td><td>llama.cpp (fork)</td><td>vLLM 0.19.0</td><td>vLLM 0.19.0</td></tr>
-          <tr><td class="name">Quality</td><td>10/12</td><td>10/12</td><td>10/12</td></tr>
+          <tr><td class="name">ms/tok</td><td class="best">8.4</td><td>19.1</td><td>20.8</td><td>40.5</td></tr>
+          <tr><td class="name">Avg latency</td><td class="best">170ms</td><td>343ms</td><td>437ms</td><td>870ms</td></tr>
+          <tr><td class="name">VRAM</td><td class="best">~2.4 GB</td><td>13.2 GB</td><td>19.9 GB</td><td>20.4 GB</td></tr>
+          <tr><td class="name">Model (on disk)</td><td class="best">1.15 GB</td><td>5.2 GB</td><td>9.5 GB</td><td>14.9 GB</td></tr>
+          <tr><td class="name">Params</td><td>8.19B</td><td>7B</td><td>2.3B eff</td><td>4.5B eff</td></tr>
+          <tr><td class="name">Runtime</td><td>llama.cpp (fork)</td><td>SGLang</td><td>vLLM 0.19.0</td><td>vLLM 0.19.0</td></tr>
+          <tr><td class="name">CUDA graphs</td><td>N/A</td><td class="best">Yes</td><td>No (not supported)</td><td>No (not supported)</td></tr>
         </tbody>
       </table>
     </div>
+
+    <p>
+      <strong>Qwen 7B AWQ on SGLang</strong> is the interesting middle ground. At 19.1 ms/tok with CUDA graphs enabled, it is the fastest conventional (non-1-bit) model. It uses 13.2 GB VRAM, leaving room for a second model alongside it. SGLang is the most mature runtime of the three, with full CUDA graph support, RadixAttention, and established tooling. If you need a production-ready setup today without custom forks or bleeding-edge runtimes, Qwen on SGLang is the practical choice.
+    </p>
 
     <h3>Why Bonsai is faster despite having more parameters</h3>
     <p>
@@ -342,8 +357,12 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
       <strong>Gemma 4 E4B: complex reasoning where quality matters more than speed.</strong> Google's benchmarks show E4B at 42.5% on AIME 2026 math (vs 37.5% for E2B), 58.6% on GPQA Diamond (vs 43.4%), and 52% on LiveCodeBench (vs 44%). The 10-15 point gap on hard reasoning tasks is real. In my simpler test suite, that gap did not surface (both scored 10/12), but my prompts were not hard enough to discriminate. If your use case involves multi-step reasoning, graduate-level questions, or competitive coding, E4B is worth the latency cost (40.5 ms/tok). If your prompts are simple classification or short-form QA, E2B gives the same answers faster.
     </p>
 
+    <p>
+      <strong>Qwen 7B AWQ on SGLang: production-ready middle ground.</strong> Use it when you need a proven model on a mature runtime. SGLang has full CUDA graph support, RadixAttention, and continuous batching. Qwen 7B AWQ at INT4 runs at 19.1 ms/tok with 13.2 GB VRAM, leaving room for a second model alongside it. The tooling is stable: no custom forks, no bleeding-edge transformers installs. The tradeoff is that it scored lowest on quality (9/12) because it wraps code and JSON in markdown fences (like Gemma 4) and got AWQ wrong (like Bonsai). But 19 ms/tok with CUDA graphs is a strong baseline for latency-sensitive serving.
+    </p>
+
     <div class="callout">
-      <p><strong>Summary.</strong> Bonsai for speed and format compliance. E2B for factual accuracy on edge. E4B for hard reasoning tasks where you can afford 40+ ms/tok. None of them is universally best.</p>
+      <p><strong>Summary.</strong> Bonsai for speed and format compliance. E2B for factual accuracy on edge. Qwen 7B AWQ for production readiness on SGLang. E4B for hard reasoning where you can afford 40+ ms/tok. None of them is universally best.</p>
     </div>
   </div>
 </section>
