@@ -420,6 +420,49 @@ bash scripts/stop-all.sh</code></pre>
 
 <section class="section">
   <div class="container">
+    <span class="section-tag">Formal benchmarks</span>
+    <h2>IFEval and GSM8K</h2>
+
+    <p>
+      The quality tests above are useful for quick comparisons but they are not standard benchmarks. To give these results more weight, I ran two widely-used evaluation suites using <a href="https://github.com/EleutherAI/lm-evaluation-harness" target="_blank" rel="noopener">lm-evaluation-harness</a> against the models served via their respective APIs.
+    </p>
+
+    <h3>About the benchmarks</h3>
+
+    <p>
+      <strong><a href="https://arxiv.org/abs/2311.07911" target="_blank" rel="noopener">IFEval</a></strong> (Instruction Following Evaluation) tests whether a model can follow precise formatting constraints: "write exactly 3 paragraphs," "include the word 'elephant' at least twice," "respond in all caps." It has 541 prompts, each with one or more verifiable constraints. Scoring is purely rule-based with no LLM judge. The metric is the average of prompt-level strict accuracy and instruction-level strict accuracy. This benchmark matters for pipeline use cases where the model must follow format instructions exactly.
+    </p>
+
+    <p>
+      <strong><a href="https://arxiv.org/abs/2110.14168" target="_blank" rel="noopener">GSM8K</a></strong> (Grade School Math 8K) tests mathematical reasoning with 1,319 word problems at roughly middle-school difficulty. The model generates a chain-of-thought solution and a final numeric answer. Scoring extracts the last number in the response and compares it to the ground truth. No LLM judge needed. This benchmark matters because math reasoning is one of the first capabilities to degrade under aggressive quantization.
+    </p>
+
+    <p>
+      Both benchmarks hit the model via the OpenAI-compatible chat completions API. The evaluation framework runs on CPU with no GPU contention. Each model was tested one at a time to ensure clean measurements.
+    </p>
+
+    <div class="callout warn">
+      <p><strong>Results pending.</strong> IFEval and GSM8K runs are in progress. Each benchmark takes 30-60 minutes per model. Results will appear here as they complete.</p>
+    </div>
+
+    <h3>How to run them yourself</h3>
+    <pre><code># Install
+pip install "lm-eval[api]"
+
+# IFEval against any OpenAI-compatible server
+lm_eval --model local-chat-completions \
+  --model_args model=default,base_url=http://localhost:3001/v1,num_concurrent=1 \
+  --tasks leaderboard_ifeval --batch_size 1
+
+# GSM8K (chain-of-thought)
+lm_eval --model local-chat-completions \
+  --model_args model=default,base_url=http://localhost:3001/v1,num_concurrent=1 \
+  --tasks gsm8k_cot --batch_size 1</code></pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
     <span class="section-tag">What's next</span>
     <h2>Open questions</h2>
 
