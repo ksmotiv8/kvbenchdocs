@@ -21,6 +21,7 @@
             <li><a href="index.html" class="nav-active">Home</a></li>
             <li><a href="corpus.html">Corpus Generator</a></li>
             <li><a href="benchmarks.html">Benchmarks</a></li>
+            <li><a href="inference/">Inference</a></li>
         </ul>
         <div class="nav-right">
             <a href="https://github.com/ksmotiv8/kvbenchdocs" class="btn-nav" aria-label="View on GitHub">
@@ -41,6 +42,7 @@
         <li><a href="index.html">Home</a></li>
         <li><a href="corpus.html">Corpus Generator</a></li>
         <li><a href="benchmarks.html">Benchmarks</a></li>
+        <li><a href="inference/">Inference</a></li>
     </ul>
 </div>
 
@@ -277,6 +279,13 @@ curl http://localhost:8000/health</code></pre>
                 <div class="page-link-card-inner">
                     <h3>Benchmarks</h3>
                     <p>bench-kvcache methodology, infrastructure setup, and results. A living page updated with new benchmark runs.</p>
+                    <span class="page-link-arrow">&rarr;</span>
+                </div>
+            </a>
+            <a href="inference/" class="page-link-card">
+                <div class="page-link-card-inner">
+                    <h3>Inference Latency</h3>
+                    <p>Low-latency LLM inference on a single GPU. Bonsai 1-bit, Gemma 4, SGLang, speculative decoding. Reproducible benchmarks and setup scripts.</p>
                     <span class="page-link-arrow">&rarr;</span>
                 </div>
             </a>
