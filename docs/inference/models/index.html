@@ -137,7 +137,7 @@
 
     <h3>Start the server</h3>
     <pre><code>bash scripts/start-bonsai.sh</code></pre>
-    <p>Starts on port 3001 by default. OpenAI-compatible API at <code>http://localhost:3001/v1/chat/completions</code>. On an L4, startup takes about 5 seconds and the model uses ~1.8 GB VRAM.</p>
+    <p>Starts on port 3001 by default. OpenAI-compatible API at <code>http://localhost:3001/v1/chat/completions</code>. On an L4, startup takes about 5 seconds and the model uses ~2 GB VRAM.</p>
 
     <h3>Verify it works</h3>
     <div class="terminal">
@@ -168,7 +168,7 @@
     <h2>Gemma 4 on vLLM</h2>
 
     <p>
-      Gemma 4 launched April 1, 2026. At time of writing, <strong>SGLang does not support it yet</strong> (<a href="https://github.com/sgl-project/sglang/issues/21952" target="_blank" rel="noopener">PR #21952</a> is open). vLLM v0.19.0 (released April 3) does support it, but requires a bleeding-edge transformers install because the <code>gemma4</code> model type is too new for the latest PyPI release.
+      Gemma 4 launched April 1, 2026. At time of writing, <strong>SGLang does not support it yet</strong> (<a href="https://github.com/sgl-project/sglang/issues/21952" target="_blank" rel="noopener">issue #21952</a> is open). vLLM v0.19.0 (released April 3) does support it, but requires a bleeding-edge transformers install because the <code>gemma4</code> model type is too new for the latest PyPI release.
     </p>
 
     <h3>What you need</h3>
@@ -206,7 +206,7 @@ GEMMA4_MODEL=E4B bash scripts/setup-gemma4.sh</code></pre>
       </table>
     </div>
     <p>
-      The MoE model is the most interesting for latency (3.8B active per token from 26B stored), but all 128 experts must be in VRAM even though only 8 fire per token. It needs an A100, H100, or H200.
+      The MoE model is the most interesting for latency (3.8B active per token from 26B stored), but all 128 experts plus 1 shared expert must be in VRAM even though only 8+1 are active per token. It needs an A100, H100, or H200.
     </p>
   </div>
 </section>
@@ -217,7 +217,7 @@ GEMMA4_MODEL=E4B bash scripts/setup-gemma4.sh</code></pre>
     <h2>How I tested quality</h2>
 
     <p>
-      I ran 12 prompts across four categories: factual knowledge, mathematical reasoning, code correctness, and instruction following. All prompts have objectively verifiable answers.
+      I ran 12 prompts across four categories: factual knowledge, mathematical reasoning, code correctness, and instruction following. All prompts have objectively verifiable answers. This is a small test suite. It is useful for spotting obvious quality differences, but 12 questions cannot substitute for a proper benchmark. The IFEval and GSM8K results below provide more statistical weight.
     </p>
 
     <h3>The test suite</h3>
@@ -227,12 +227,12 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
 
     <h3>Factual knowledge: what does AWQ stand for?</h3>
     <p>
-      This question turned out to be the sharpest discriminator. The correct answer is "Activation-aware Weight Quantization." Gemma 4 (both E2B and E4B) got it right. Bonsai said "Approximate Weight Quantization," which is wrong. Qwen 1.5B (from the earlier SGLang tests) said "Adaptive Weight Quantization," also wrong. Three different wrong answers from three different model families. Only Gemma 4 got it right at every size tested.
+      This question turned out to be the sharpest discriminator. The correct answer is "Activation-aware Weight Quantization." Gemma 4 (both E2B and E4B) got it right. Bonsai said "Approximate Weight Quantization," which is wrong. Qwen 7B AWQ said "Adaptive Weight Quantization," also wrong. Three different wrong answers from three different model families. Only Gemma 4 got it right at every size tested.
     </p>
 
     <h3>Code correctness: executable output matters</h3>
     <p>
-      I asked both models to write a Fibonacci function and a string reversal function, then executed the output. Bonsai outputs clean, executable Python. Gemma 4 wraps its code in markdown triple-backtick fences (<code>```python ... ```</code>), which is correct for documentation but fails <code>python3</code> execution. If you are building a pipeline where LLM output feeds directly into an interpreter or another system, this difference matters.
+      I asked both models to write a Fibonacci function and a string reversal function, then executed the output. Bonsai produced clean, executable Python on both code prompts I tested. Gemma 4 and Qwen wrapped their code in markdown triple-backtick fences (<code>```python ... ```</code>), which is correct for documentation but fails <code>python3</code> execution. Two prompts is a small sample, but if your pipeline feeds LLM output directly into an interpreter, it is worth testing this behavior with your own prompts.
     </p>
 
     <h3>Instruction following: JSON output</h3>
@@ -263,7 +263,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
     </div>
 
     <p>
-      One revealing question: "What does AWQ stand for?" Only Gemma 4 got it right ("Activation-aware Weight Quantization"). Bonsai said "Approximate," Qwen said "Adaptive." Three model families, three wrong answers, and only the smallest (Gemma 4 E2B at 2.3B effective) got it right. Factual recall does not scale linearly with parameter count.
+      One revealing question: "What does AWQ stand for?" Only Gemma 4 got it right ("Activation-aware Weight Quantization"). Bonsai said "Approximate," Qwen said "Adaptive." Three model families, three wrong answers. Only Gemma 4 got it right (both E2B and E4B). One question is not enough to draw conclusions about how factual recall scales with model size, but it is a useful data point.
     </p>
 
     <div class="callout">
@@ -319,7 +319,7 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
         <tbody>
           <tr><td class="name">ms/tok</td><td class="best">8.4</td><td>19.1</td><td>20.8</td><td>40.5</td></tr>
           <tr><td class="name">Avg latency</td><td class="best">170ms</td><td>343ms</td><td>437ms</td><td>870ms</td></tr>
-          <tr><td class="name">VRAM</td><td class="best">~2.4 GB</td><td>13.2 GB</td><td>19.9 GB</td><td>20.4 GB</td></tr>
+          <tr><td class="name">VRAM</td><td class="best">~2 GB</td><td>13.2 GB</td><td>19.9 GB</td><td>20.4 GB</td></tr>
           <tr><td class="name">Model (on disk)</td><td class="best">1.15 GB</td><td>5.2 GB</td><td>9.5 GB</td><td>14.9 GB</td></tr>
           <tr><td class="name">Params</td><td>8.19B</td><td>7B</td><td>2.3B eff</td><td>4.5B eff</td></tr>
           <tr><td class="name">Runtime</td><td>llama.cpp (fork)</td><td>SGLang</td><td>vLLM 0.19.0</td><td>vLLM 0.19.0</td></tr>
@@ -342,15 +342,15 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
 
     <h3>When to use which model</h3>
     <p>
-      The right model depends on where it sits in your system and what it needs to do. Here is how I think about the choice after running these tests.
+      The right model depends on where it sits in your system and what it needs to do. Here is how I think about the choice after running these tests. One important caveat: each model runs on a different runtime (llama.cpp, SGLang, vLLM) with different optimization levels. Some of the latency differences come from the runtime, not the model. Take the ms/tok comparisons as directional, not absolute.
     </p>
 
     <p>
-      <strong>Bonsai 1-bit 8B: pipeline infrastructure.</strong> Use it when inference is a subroutine inside a larger system. Prompt classification, rewriting, routing, tool call generation, structured output. It is the fastest model I tested (8.3 ms/tok), uses the least VRAM (1.8 GB), and its outputs are machine-parseable without post-processing. It does not wrap code in markdown fences. It does not add explanatory text when you ask for JSON. If your system chains multiple LLM calls and each one needs to complete in under 150ms, Bonsai is currently the only model that consistently hits that target on an L4. The tradeoff is factual accuracy: it gets some knowledge questions wrong that both Gemma variants get right.
+      <strong>Bonsai 1-bit 8B: pipeline infrastructure.</strong> Use it when inference is a subroutine inside a larger system. Prompt classification, rewriting, routing, tool call generation, structured output. It is the fastest model I tested (8.4 ms/tok), uses the least VRAM (~2 GB), and its outputs are machine-parseable without post-processing. It does not wrap code in markdown fences. It does not add explanatory text when you ask for JSON. If your system chains multiple LLM calls and needs sub-200ms round trips, Bonsai is the only model I tested that gets close on an L4 (170ms average). The tradeoff is factual accuracy: it gets some knowledge questions wrong that both Gemma variants get right.
     </p>
 
     <p>
-      <strong>Gemma 4 E2B: knowledge-dense tasks on constrained hardware.</strong> Use it when you need factual accuracy from a small model that runs on edge hardware. E2B scored 5/5 on factual knowledge in my tests despite having only 2.3B effective parameters. Google's benchmarks show 60% on MMLU Pro and 67.4% on multilingual MMLU, which is strong for a model this size. It runs on a Raspberry Pi 5 at 7.6 tok/s. On an L4, it runs at 20.8 ms/tok. The tradeoff is VRAM: the Per-Layer Embeddings inflate total size to 9.5 GB BF16, which means it uses 19.9 GB on vLLM. That is a lot of VRAM for a 2.3B-effective model. It also wraps outputs in markdown formatting, which is a problem for pipeline use cases.
+      <strong>Gemma 4 E2B: knowledge-dense tasks on constrained hardware.</strong> Use it when you need factual accuracy from a small model that runs on edge hardware. E2B scored 5/5 on factual knowledge in my tests despite having only 2.3B effective parameters. Google's benchmarks show 60% on MMLU Pro, which is strong for a model this size. It runs on a Raspberry Pi 5 at 7.6 tok/s. On an L4, it runs at 20.8 ms/tok. The tradeoff is VRAM: the Per-Layer Embeddings inflate total size to 9.5 GB BF16, which means it uses 19.9 GB on vLLM. That is a lot of VRAM for a 2.3B-effective model. It also wraps outputs in markdown formatting, which is a problem for pipeline use cases.
     </p>
 
     <p>
@@ -410,7 +410,7 @@ bash scripts/stop-all.sh</code></pre>
       <code>benchmarks/latency.sh</code> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/benchmarks/latency.sh" target="_blank" rel="noopener">source</a>) sends 8 prompts with a concise system prompt and measures total latency, token count, and ms/tok for each. It warms up the server before measuring.
     </p>
     <p>
-      <code>benchmarks/quality.sh</code> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/benchmarks/quality.sh" target="_blank" rel="noopener">source</a>) sends 9 prompts across factual knowledge, reasoning, and instruction following categories with greedy decoding. Each answer is auto-scored against known correct answers.
+      <code>benchmarks/quality.sh</code> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/benchmarks/quality.sh" target="_blank" rel="noopener">source</a>) sends prompts across factual knowledge, reasoning, and instruction following categories with greedy decoding. Each answer is auto-scored against known correct answers.
     </p>
     <p>
       Both scripts take a port number and model name as arguments. They work with any server that exposes <code>/v1/chat/completions</code>.
