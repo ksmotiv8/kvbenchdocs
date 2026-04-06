@@ -502,6 +502,55 @@ lm_eval --model local-chat-completions \
 
 <section class="section">
   <div class="container">
+    <span class="section-tag">Going deeper</span>
+    <h2>Custom evals with Inspect AI</h2>
+
+    <p>
+      Standard benchmarks (IFEval, GSM8K) measure general capability. But the question driving this work is more specific: <strong>can these models function as components inside a larger system?</strong> That requires testing things standard benchmarks do not cover: multi-step pipelines, format compliance at scale, and tool calling.
+    </p>
+    <p>
+      <a href="https://inspect.aisi.org.uk/" target="_blank" rel="noopener">Inspect AI</a> is an eval framework built by the UK AI Safety Institute and used by Anthropic, DeepMind, and Grok. It supports composable solver pipelines, built-in tool use, sandboxed code execution, and publishable result bundles. It also natively supports all three of our runtimes (vLLM, SGLang, llama-cpp-python) through simple environment variables.
+    </p>
+
+    <h3>Three custom evals</h3>
+
+    <p>
+      <strong>Pipeline latency</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/pipeline_latency.py" target="_blank" rel="noopener">source</a>). Tests whether multi-step LLM pipelines produce correct output when chained. A 2-step pipeline classifies the input then generates with a targeted prompt. A 4-step pipeline classifies, plans, executes, and verifies. If the blog's thesis is right (low latency enables chained calls), these pipelines should work at interactive speed on the fast models and degrade on the slow ones. Inspect tracks token usage and timing per step, so we can see where the pipeline spends its time.
+    </p>
+
+    <p>
+      <strong>Format compliance</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/format_compliance.py" target="_blank" rel="noopener">source</a>). Our quick test found that Bonsai outputs raw JSON while Gemma 4 wraps it in markdown fences. Two prompts is not enough to make that claim. This eval tests 10 prompts across JSON output, executable Python, yes/no answers, and numeric-only responses. The scorer checks whether the output is machine-parseable without post-processing.
+    </p>
+
+    <p>
+      <strong>Tool calling</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/tool_calling.py" target="_blank" rel="noopener">source</a>). Tests whether models can use tools (weather lookup, math calculation, database search) when given tool definitions. Simpler than BFCLv3 but directly relevant: if low-latency inference enables agentic workflows, the model needs to call tools correctly. Inspect's built-in tool support makes this a straightforward eval.
+    </p>
+
+    <h3>Setup</h3>
+    <pre><code># Install
+pip install inspect-ai
+
+# Configure for your runtime
+export LLAMA_CPP_PYTHON_BASE_URL=http://localhost:3001/v1    # Bonsai
+export VLLM_BASE_URL=http://localhost:3000/v1                 # Gemma 4
+export SGLANG_BASE_URL=http://localhost:3000/v1               # Qwen
+
+# Run
+inspect eval evals/pipeline_latency.py --model llama-cpp-python/bonsai
+inspect eval evals/format_compliance.py --model vllm/google/gemma-4-E2B-it
+inspect eval evals/tool_calling.py --model sglang/default
+
+# View results (generates static HTML)
+inspect view bundle --output results/</code></pre>
+
+    <div class="callout">
+      <p><strong>Results queued.</strong> These evals will run after the IFEval/GSM8K benchmarks complete. The eval files are in the repo and can be run independently against any OpenAI-compatible server.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
     <span class="section-tag">What's next</span>
     <h2>Open questions</h2>
 
