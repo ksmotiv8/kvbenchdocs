@@ -463,7 +463,7 @@ bash scripts/stop-all.sh</code></pre>
           <tr>
             <td class="name">Gemma 4 E2B (vLLM)</td>
             <td class="val">81.0%</td>
-            <td><em>running...</em></td>
+            <td>63.7%</td>
             <td>20.8</td>
           </tr>
           <tr>
@@ -483,12 +483,11 @@ bash scripts/stop-all.sh</code></pre>
       <strong>GSM8K tells a different story.</strong> Bonsai scored 68.9% on math reasoning. Qwen 7B AWQ scored 70.6%. The gap is small but Bonsai does not dominate here the way it does on instruction following. Math reasoning is one of the capabilities most sensitive to quantization. A 1-bit model holding within 2 points of an INT4 7B model on 1,319 math problems is respectable, but it is not a clear win.
     </p>
     <p>
-      <strong>Gemma 4 E2B IFEval: 81.0%.</strong> Close to Bonsai despite having far fewer parameters (2.3B effective vs 8.19B). GSM8K is still running. For reference, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. Qwen 2.5 7B AWQ at 73.4% reflects both the older generation and INT4 quantization.
+      <strong>Gemma 4 E2B:</strong> IFEval 81.0%, close to Bonsai despite having far fewer parameters (2.3B effective vs 8.19B). GSM8K 63.7%, the lowest of the three. Math reasoning at 2.3B effective parameters is limited. For reference, Google's own benchmarks show E4B at 42.5% on AIME 2026, so math is not E2B's strength.
     </p>
-
-    <div class="callout">
-      <p><strong>Gemma 4 E2B GSM8K running.</strong> Final result expected shortly.</p>
-    </div>
+    <p>
+      For context, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. These are much larger, unquantized models. The scores here reflect what you get at the latency-optimized end of the spectrum.
+    </p>
 
     <h3>How to run them yourself</h3>
     <pre><code># Install
