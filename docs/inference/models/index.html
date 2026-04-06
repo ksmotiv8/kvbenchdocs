@@ -457,12 +457,12 @@ bash scripts/stop-all.sh</code></pre>
           <tr>
             <td class="name">Qwen 7B AWQ (SGLang)</td>
             <td class="val">73.4%</td>
-            <td><em>running...</em></td>
+            <td class="val">70.6%</td>
             <td>19.1</td>
           </tr>
           <tr>
             <td class="name">Bonsai 1-bit 8B (llama.cpp)</td>
-            <td><em>queued</em></td>
+            <td><em>running...</em></td>
             <td><em>queued</em></td>
             <td>8.4</td>
           </tr>
@@ -477,11 +477,11 @@ bash scripts/stop-all.sh</code></pre>
     </div>
 
     <p>
-      <strong>Qwen 7B AWQ IFEval: 73.4%.</strong> Prompt-level strict accuracy 69.5%, instruction-level strict accuracy 77.2%. The OLLM average (standard metric) is the mean of these two. This is a reasonable score for a 7B INT4 model. For reference, the Qwen3-8B base model scores 81.5% on IFEval per the Bonsai whitepaper. The AWQ quantization and smaller variant likely account for the gap.
+      <strong>Qwen 7B AWQ:</strong> IFEval 73.4% (prompt strict 69.5%, instruction strict 77.2%). GSM8K 70.6% (flexible extract). For reference, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. The gap is expected: Qwen 2.5 is an older generation, and AWQ INT4 quantization trades some accuracy for speed.
     </p>
 
     <div class="callout">
-      <p><strong>Benchmarks in progress.</strong> GSM8K on Qwen is running now. Bonsai and Gemma 4 E2B are queued. Results will fill in as each model completes. Total estimated time: ~3-4 hours.</p>
+      <p><strong>Benchmarks in progress.</strong> Bonsai IFEval is running now. Gemma 4 E2B is queued after. Results fill in as each model completes.</p>
     </div>
 
     <h3>How to run them yourself</h3>
