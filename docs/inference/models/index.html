@@ -227,7 +227,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
 
     <h3>Factual knowledge: what does AWQ stand for?</h3>
     <p>
-      This question turned out to be the sharpest discriminator. The correct answer is "Activation-aware Weight Quantization." Gemma 4 (both E2B and E4B) got it right. Bonsai said "Approximate Weight Quantization," which is wrong. Qwen 7B AWQ said "Adaptive Weight Quantization," also wrong. Three different wrong answers from three different model families. Only Gemma 4 got it right at every size tested.
+      This question turned out to be the sharpest discriminator. The correct answer is "Activation-aware Weight Quantization." Gemma 4 (both E2B and E4B) got it right. Bonsai said "Approximate Weight Quantization," which is wrong. Qwen 2.5 7B AWQ said "Adaptive Weight Quantization," also wrong. Three different wrong answers from three different model families. Only Gemma 4 got it right at every size tested.
     </p>
 
     <h3>Code correctness: executable output matters</h3>
@@ -247,7 +247,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
           <tr>
             <th scope="col">Category</th>
             <th scope="col">Bonsai 8B</th>
-            <th scope="col">Qwen 7B AWQ</th>
+            <th scope="col">Qwen 2.5 7B AWQ</th>
             <th scope="col">Gemma 4 E2B</th>
             <th scope="col">Gemma 4 E4B</th>
           </tr>
@@ -267,7 +267,7 @@ bash benchmarks/quality.sh 3000 google/gemma-4-E2B-it  # Gemma 4</code></pre>
     </p>
 
     <div class="callout">
-      <p><strong>Different profiles, not a ranking.</strong> Gemma 4 knows more facts per parameter. Bonsai follows format instructions literally (raw JSON, executable code). Qwen 7B AWQ is the practical middle: fastest conventional model, mature SGLang runtime, CUDA graphs enabled. Pick based on what your system needs.</p>
+      <p><strong>Different profiles, not a ranking.</strong> Gemma 4 knows more facts per parameter. Bonsai follows format instructions literally (raw JSON, executable code). Qwen 2.5 7B AWQ is the practical middle: fastest conventional model, mature SGLang runtime, CUDA graphs enabled. Pick based on what your system needs.</p>
     </div>
   </div>
 </section>
@@ -291,7 +291,7 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
         <div class="bar-track"><div class="bar-fill green" style="width: 21%;">8.4</div></div>
       </div>
       <div class="bar-row">
-        <div class="bar-label">Qwen 7B AWQ</div>
+        <div class="bar-label">Qwen 2.5 7B AWQ</div>
         <div class="bar-track"><div class="bar-fill cyan" style="width: 47%;">19.1</div></div>
       </div>
       <div class="bar-row">
@@ -311,7 +311,7 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
           <tr>
             <th scope="col"><span class="sr-only">Metric</span></th>
             <th scope="col">Bonsai 1-bit 8B</th>
-            <th scope="col">Qwen 7B AWQ</th>
+            <th scope="col">Qwen 2.5 7B AWQ</th>
             <th scope="col">Gemma 4 E2B</th>
             <th scope="col">Gemma 4 E4B</th>
           </tr>
@@ -329,7 +329,7 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
     </div>
 
     <p>
-      <strong>Qwen 7B AWQ on SGLang</strong> is the interesting middle ground. At 19.1 ms/tok with CUDA graphs enabled, it is the fastest conventional (non-1-bit) model. It uses 13.2 GB VRAM, leaving room for a second model alongside it. SGLang is the most mature runtime of the three, with full CUDA graph support, RadixAttention, and established tooling. If you need a production-ready setup today without custom forks or bleeding-edge runtimes, Qwen on SGLang is the practical choice.
+      <strong>Qwen 2.5 7B AWQ on SGLang</strong> is the interesting middle ground. At 19.1 ms/tok with CUDA graphs enabled, it is the fastest conventional (non-1-bit) model. It uses 13.2 GB VRAM, leaving room for a second model alongside it. SGLang is the most mature runtime of the three, with full CUDA graph support, RadixAttention, and established tooling. If you need a production-ready setup today without custom forks or bleeding-edge runtimes, Qwen on SGLang is the practical choice.
     </p>
 
     <h3>Why Bonsai is faster despite having more parameters</h3>
@@ -358,11 +358,11 @@ bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default  # side-by-si
     </p>
 
     <p>
-      <strong>Qwen 7B AWQ on SGLang: production-ready middle ground.</strong> Use it when you need a proven model on a mature runtime. SGLang has full CUDA graph support, RadixAttention, and continuous batching. Qwen 7B AWQ at INT4 runs at 19.1 ms/tok with 13.2 GB VRAM, leaving room for a second model alongside it. The tooling is stable: no custom forks, no bleeding-edge transformers installs. The tradeoff is that it scored lowest on quality (9/12) because it wraps code and JSON in markdown fences (like Gemma 4) and got AWQ wrong (like Bonsai). But 19 ms/tok with CUDA graphs is a strong baseline for latency-sensitive serving.
+      <strong>Qwen 2.5 7B AWQ on SGLang: production-ready middle ground.</strong> Use it when you need a proven model on a mature runtime. SGLang has full CUDA graph support, RadixAttention, and continuous batching. Qwen 2.5 7B AWQ at INT4 runs at 19.1 ms/tok with 13.2 GB VRAM, leaving room for a second model alongside it. The tooling is stable: no custom forks, no bleeding-edge transformers installs. The tradeoff is that it scored lowest on quality (9/12) because it wraps code and JSON in markdown fences (like Gemma 4) and got AWQ wrong (like Bonsai). But 19 ms/tok with CUDA graphs is a strong baseline for latency-sensitive serving.
     </p>
 
     <div class="callout">
-      <p><strong>Summary.</strong> Bonsai for speed and format compliance. E2B for factual accuracy on edge. Qwen 7B AWQ for production readiness on SGLang. E4B for hard reasoning where you can afford 40+ ms/tok. None of them is universally best.</p>
+      <p><strong>Summary.</strong> Bonsai for speed and format compliance. E2B for factual accuracy on edge. Qwen 2.5 7B AWQ for production readiness on SGLang. E4B for hard reasoning where you can afford 40+ ms/tok. None of them is universally best.</p>
     </div>
   </div>
 </section>
@@ -467,10 +467,22 @@ bash scripts/stop-all.sh</code></pre>
             <td>20.8</td>
           </tr>
           <tr>
-            <td class="name">Qwen 7B AWQ (SGLang)</td>
+            <td class="name">Qwen 2.5 7B AWQ (SGLang)</td>
             <td>73.4%</td>
             <td class="best">70.6%</td>
             <td>19.1</td>
+          </tr>
+          <tr>
+            <td class="name">Gemma 4 E4B (vLLM)</td>
+            <td><em>running...</em></td>
+            <td><em>queued</em></td>
+            <td>40.5</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3 8B FP8 (vLLM)</td>
+            <td><em>queued</em></td>
+            <td><em>queued</em></td>
+            <td><em>TBD</em></td>
           </tr>
         </tbody>
       </table>
@@ -480,13 +492,13 @@ bash scripts/stop-all.sh</code></pre>
       <strong>Bonsai 1-bit 8B leads on instruction following.</strong> IFEval 82.8% (prompt strict 79.9%, instruction strict 85.7%). This is a notable result: the 1-bit model scores higher than both the BF16 Gemma 4 and the INT4 Qwen on a 541-prompt rule-based benchmark. It aligns with what we saw in the quick tests: Bonsai follows format instructions literally, which is exactly what IFEval measures.
     </p>
     <p>
-      <strong>GSM8K tells a different story.</strong> Bonsai scored 68.9% on math reasoning. Qwen 7B AWQ scored 70.6%. The gap is small but Bonsai does not dominate here the way it does on instruction following. Math reasoning is one of the capabilities most sensitive to quantization. A 1-bit model holding within 2 points of an INT4 7B model on 1,319 math problems is respectable, but it is not a clear win.
+      <strong>GSM8K tells a different story.</strong> Bonsai scored 68.9% on math reasoning. Qwen 2.5 7B AWQ scored 70.6%. The gap is small but Bonsai does not dominate here the way it does on instruction following. Math reasoning is one of the capabilities most sensitive to quantization. A 1-bit model holding within 2 points of an INT4 7B model on 1,319 math problems is respectable, but it is not a clear win.
     </p>
     <p>
       <strong>Gemma 4 E2B:</strong> IFEval 81.0%, close to Bonsai despite having far fewer parameters (2.3B effective vs 8.19B). GSM8K 63.7%, the lowest of the three. Math reasoning at 2.3B effective parameters is limited. For reference, Google's own benchmarks show E4B at 42.5% on AIME 2026, so math is not E2B's strength.
     </p>
     <p>
-      For context, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. These are much larger, unquantized models. The scores here reflect what you get at the latency-optimized end of the spectrum.
+      For context, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. Those scores are from an unquantized model on H100. The Qwen model tested here is <strong>Qwen 2.5</strong> (an older generation, late 2024), not Qwen 3. We are running Qwen3-8B-FP8 through the same benchmarks next, which will show how much the generation gap matters.
     </p>
 
     <h3>How to run them yourself</h3>
