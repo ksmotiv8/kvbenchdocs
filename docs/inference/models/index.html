@@ -455,33 +455,39 @@ bash scripts/stop-all.sh</code></pre>
         </thead>
         <tbody>
           <tr>
-            <td class="name">Qwen 7B AWQ (SGLang)</td>
-            <td class="val">73.4%</td>
-            <td class="val">70.6%</td>
-            <td>19.1</td>
-          </tr>
-          <tr>
             <td class="name">Bonsai 1-bit 8B (llama.cpp)</td>
-            <td><em>running...</em></td>
-            <td><em>queued</em></td>
-            <td>8.4</td>
+            <td class="best">82.8%</td>
+            <td class="val">68.9%</td>
+            <td class="best">8.4</td>
           </tr>
           <tr>
             <td class="name">Gemma 4 E2B (vLLM)</td>
-            <td><em>queued</em></td>
-            <td><em>queued</em></td>
+            <td class="val">81.0%</td>
+            <td><em>running...</em></td>
             <td>20.8</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen 7B AWQ (SGLang)</td>
+            <td>73.4%</td>
+            <td class="best">70.6%</td>
+            <td>19.1</td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <p>
-      <strong>Qwen 7B AWQ:</strong> IFEval 73.4% (prompt strict 69.5%, instruction strict 77.2%). GSM8K 70.6% (flexible extract). For reference, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. The gap is expected: Qwen 2.5 is an older generation, and AWQ INT4 quantization trades some accuracy for speed.
+      <strong>Bonsai 1-bit 8B leads on instruction following.</strong> IFEval 82.8% (prompt strict 79.9%, instruction strict 85.7%). This is a notable result: the 1-bit model scores higher than both the BF16 Gemma 4 and the INT4 Qwen on a 541-prompt rule-based benchmark. It aligns with what we saw in the quick tests: Bonsai follows format instructions literally, which is exactly what IFEval measures.
+    </p>
+    <p>
+      <strong>GSM8K tells a different story.</strong> Bonsai scored 68.9% on math reasoning. Qwen 7B AWQ scored 70.6%. The gap is small but Bonsai does not dominate here the way it does on instruction following. Math reasoning is one of the capabilities most sensitive to quantization. A 1-bit model holding within 2 points of an INT4 7B model on 1,319 math problems is respectable, but it is not a clear win.
+    </p>
+    <p>
+      <strong>Gemma 4 E2B IFEval: 81.0%.</strong> Close to Bonsai despite having far fewer parameters (2.3B effective vs 8.19B). GSM8K is still running. For reference, the Qwen3-8B base model scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. Qwen 2.5 7B AWQ at 73.4% reflects both the older generation and INT4 quantization.
     </p>
 
     <div class="callout">
-      <p><strong>Benchmarks in progress.</strong> Bonsai IFEval is running now. Gemma 4 E2B is queued after. Results fill in as each model completes.</p>
+      <p><strong>Gemma 4 E2B GSM8K running.</strong> Final result expected shortly.</p>
     </div>
 
     <h3>How to run them yourself</h3>
