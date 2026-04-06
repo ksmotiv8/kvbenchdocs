@@ -479,10 +479,10 @@ bash scripts/stop-all.sh</code></pre>
             <td>40.5</td>
           </tr>
           <tr>
-            <td class="name">Qwen3 8B FP8 (vLLM)</td>
-            <td><em>queued</em></td>
-            <td><em>queued</em></td>
-            <td><em>TBD</em></td>
+            <td class="name">Qwen3.5 9B AWQ (SGLang)</td>
+            <td class="worst">31.9%*</td>
+            <td class="worst">12.0%*</td>
+            <td>~30</td>
           </tr>
         </tbody>
       </table>
@@ -501,7 +501,13 @@ bash scripts/stop-all.sh</code></pre>
       <strong>Gemma 4 E4B:</strong> IFEval 86.9%, the highest in this comparison and a meaningful jump over E2B's 81.0%. GSM8K 70.2%, matching Qwen 2.5 7B AWQ. The extra parameters (4.5B effective vs 2.3B) clearly help on both instruction following and math. The cost is 40.5 ms/tok, roughly 5x slower than Bonsai.
     </p>
     <p>
-      For context, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper. Those scores are from an unquantized model on H100. The Qwen model tested above is <strong>Qwen 2.5</strong> (an older generation, late 2024). Qwen 3.5 9B benchmarks are running next.
+      <strong>*Qwen3.5 9B: the thinking model problem.</strong> Qwen 3.5 is a reasoning model that generates internal chain-of-thought tokens before producing its final answer. This inflates output length (1000+ tokens per IFEval prompt) and confuses rule-based scorers that expect direct answers. The 31.9% IFEval and 12.0% GSM8K scores do not reflect the model's actual capability. They reflect a benchmark tooling mismatch. With thinking disabled via API parameters, the model generates at ~30 ms/tok on the AWQ variant, which is a valid latency data point. But properly benchmarking thinking models requires either (a) a scorer that strips thinking tokens before evaluation, or (b) explicit thinking-mode control in the lm-eval framework, which is not yet available for the <code>local-chat-completions</code> backend.
+    </p>
+    <p>
+      This is an important finding for latency work: <strong>thinking models have a hidden latency cost</strong> that is invisible in published benchmarks (which run with thinking disabled) but shows up immediately in production serving. A thinking model that scores 90% on IFEval with thinking disabled may score 30% when thinking is on, because the extra tokens overflow format constraints. For low-latency pipelines, you need either a non-thinking model or explicit control over thinking mode.
+    </p>
+    <p>
+      For reference, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper, with thinking disabled on H100.
     </p>
 
     <h3>How to run them yourself</h3>
