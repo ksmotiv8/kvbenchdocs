@@ -492,14 +492,14 @@ bash scripts/stop-all.sh</code></pre>
           </tr>
           <tr>
             <td class="name">GPT-OSS 20B (SGLang)</td>
-            <td><em>running...</em></td>
-            <td><em>queued</em></td>
+            <td class="val">74.3%</td>
+            <td class="best">86.0%</td>
             <td><em>TBD</em></td>
           </tr>
           <tr>
             <td class="name">GLM 4.7 Flash AWQ (SGLang)</td>
-            <td><em>queued</em></td>
-            <td><em>queued</em></td>
+            <td class="val">80.3%</td>
+            <td><em>running...</em></td>
             <td><em>TBD</em></td>
           </tr>
         </tbody>
@@ -542,10 +542,16 @@ bash scripts/stop-all.sh</code></pre>
       <strong><a href="https://huggingface.co/zai-org/GLM-4.7-Flash" target="_blank" rel="noopener">GLM 4.7 Flash AWQ</a></strong> is a 4-bit AWQ quantization of GLM 4.7 Flash (from <a href="https://huggingface.co/QuantTrio/GLM-4.7-Flash-AWQ" target="_blank" rel="noopener">QuantTrio</a>). GLM 4.7 Flash is Zhipu AI's efficient MoE with 47 layers and 4 active experts per token. The "Flash" variant is the smallest in the GLM 4.7 family (the full GLM 4.7 is 668 GB). AWQ brings it down to 18.4 GB, which fits on the L4.
     </p>
     <p>
-      Both of these may be thinking models. I will note in the results whether they exhibit the same token inflation pattern as Qwen3.5. If they do, the IFEval/GSM8K scores will be unreliable for the same reason. The latency numbers should still be meaningful as long as I measure with thinking disabled where possible.
+      Both of these may be thinking models, but the early results suggest they are not (or that thinking mode is properly disabled by default in their chat templates). The IFEval and GSM8K scores look realistic, not the broken 12-31% we saw with Qwen3.5.
+    </p>
+    <p>
+      <strong>GPT-OSS 20B:</strong> IFEval 74.3% (prompt strict 73.3%, instruction strict 75.2%). GSM8K <strong>86.0%</strong> on flexible extract, the highest math score in this comparison so far. The MoE architecture pays off on math reasoning despite only 4B active parameters. This is what Qwen3.5 should have looked like if the harness could disable thinking properly.
+    </p>
+    <p>
+      <strong>GLM 4.7 Flash AWQ:</strong> IFEval 80.3% (prompt strict 80.7%, instruction strict 79.8%). GSM8K still running. Strong instruction-following, in the same range as Gemma 4 E2B (81.0%) and Bonsai (82.8%).
     </p>
     <div class="callout">
-      <p><strong>Running now.</strong> GPT-OSS 20B on SGLang, IFEval in progress. GLM 4.7 Flash AWQ queued after. I will update this section with results, quality answers, and any thinking-mode caveats as they complete.</p>
+      <p><strong>GLM 4.7 GSM8K still running. Latency benchmarks queued.</strong> Updates as results land.</p>
     </div>
 
     <h3>How to run them yourself</h3>
