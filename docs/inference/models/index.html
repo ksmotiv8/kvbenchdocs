@@ -490,6 +490,18 @@ bash scripts/stop-all.sh</code></pre>
             <td><em>n/a*</em></td>
             <td>68.5</td>
           </tr>
+          <tr>
+            <td class="name">GPT-OSS 20B (SGLang)</td>
+            <td><em>running...</em></td>
+            <td><em>queued</em></td>
+            <td><em>TBD</em></td>
+          </tr>
+          <tr>
+            <td class="name">GLM 4.7 Flash AWQ (SGLang)</td>
+            <td><em>queued</em></td>
+            <td><em>queued</em></td>
+            <td><em>TBD</em></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -518,6 +530,23 @@ bash scripts/stop-all.sh</code></pre>
     <p>
       For reference, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper, with thinking disabled on H100.
     </p>
+
+    <h3>GPT-OSS 20B and GLM 4.7 Flash AWQ (in progress)</h3>
+    <p>
+      To extend the comparison, I am running two more models that represent current-generation MoE architectures designed for efficient inference:
+    </p>
+    <p>
+      <strong><a href="https://huggingface.co/openai/gpt-oss-20b" target="_blank" rel="noopener">GPT-OSS 20B</a></strong> is OpenAI's open-weight MoE model. It has 32 experts with 4 active per token, roughly 4B active parameters. Natively quantized to MXFP4 format (the quantization is baked into the release, not applied afterwards), which keeps the model at 12.8 GB on disk. Architecturally this is the closest thing to Bonsai in spirit: aggressive weight compression designed for inference efficiency, but using expert routing instead of 1-bit weights.
+    </p>
+    <p>
+      <strong><a href="https://huggingface.co/zai-org/GLM-4.7-Flash" target="_blank" rel="noopener">GLM 4.7 Flash AWQ</a></strong> is a 4-bit AWQ quantization of GLM 4.7 Flash (from <a href="https://huggingface.co/QuantTrio/GLM-4.7-Flash-AWQ" target="_blank" rel="noopener">QuantTrio</a>). GLM 4.7 Flash is Zhipu AI's efficient MoE with 47 layers and 4 active experts per token. The "Flash" variant is the smallest in the GLM 4.7 family (the full GLM 4.7 is 668 GB). AWQ brings it down to 18.4 GB, which fits on the L4.
+    </p>
+    <p>
+      Both of these may be thinking models. I will note in the results whether they exhibit the same token inflation pattern as Qwen3.5. If they do, the IFEval/GSM8K scores will be unreliable for the same reason. The latency numbers should still be meaningful as long as I measure with thinking disabled where possible.
+    </p>
+    <div class="callout">
+      <p><strong>Running now.</strong> GPT-OSS 20B on SGLang, IFEval in progress. GLM 4.7 Flash AWQ queued after. I will update this section with results, quality answers, and any thinking-mode caveats as they complete.</p>
+    </div>
 
     <h3>How to run them yourself</h3>
     <pre><code># Install
