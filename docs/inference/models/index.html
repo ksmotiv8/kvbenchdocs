@@ -493,14 +493,14 @@ bash scripts/stop-all.sh</code></pre>
           <tr>
             <td class="name">GPT-OSS 20B (SGLang)</td>
             <td class="val">74.3%</td>
-            <td class="best">86.0%</td>
-            <td><em>TBD</em></td>
+            <td class="val">86.0%</td>
+            <td>20.97**</td>
           </tr>
           <tr>
             <td class="name">GLM 4.7 Flash AWQ (SGLang)</td>
             <td class="val">80.3%</td>
-            <td><em>running...</em></td>
-            <td><em>TBD</em></td>
+            <td class="best">91.3%</td>
+            <td>20.62**</td>
           </tr>
         </tbody>
       </table>
@@ -542,17 +542,29 @@ bash scripts/stop-all.sh</code></pre>
       <strong><a href="https://huggingface.co/zai-org/GLM-4.7-Flash" target="_blank" rel="noopener">GLM 4.7 Flash AWQ</a></strong> is a 4-bit AWQ quantization of GLM 4.7 Flash (from <a href="https://huggingface.co/QuantTrio/GLM-4.7-Flash-AWQ" target="_blank" rel="noopener">QuantTrio</a>). GLM 4.7 Flash is Zhipu AI's efficient MoE with 47 layers and 4 active experts per token. The "Flash" variant is the smallest in the GLM 4.7 family (the full GLM 4.7 is 668 GB). AWQ brings it down to 18.4 GB, which fits on the L4.
     </p>
     <p>
-      Both of these may be thinking models, but the early results suggest they are not (or that thinking mode is properly disabled by default in their chat templates). The IFEval and GSM8K scores look realistic, not the broken 12-31% we saw with Qwen3.5.
+      Both turned out to be reasoning models, but unlike Qwen3.5, SGLang has dedicated reasoning parsers (<code>--reasoning-parser gpt-oss</code> and <code>--reasoning-parser glm45</code>) that strip the thinking tokens into a separate <code>reasoning_content</code> field so the harness sees only the final answer. With reasoning parsers enabled, the IFEval and GSM8K scores look realistic.
     </p>
     <p>
-      <strong>GPT-OSS 20B:</strong> IFEval 74.3% (prompt strict 73.3%, instruction strict 75.2%). GSM8K <strong>86.0%</strong> on flexible extract, the highest math score in this comparison so far. The MoE architecture pays off on math reasoning despite only 4B active parameters. This is what Qwen3.5 should have looked like if the harness could disable thinking properly.
+      <strong>GPT-OSS 20B:</strong> IFEval 74.3% (prompt strict 73.3%, instruction strict 75.2%). GSM8K 86.0% on flexible extract. Quality 8/9 on the manual probe. The lone failure was the AWQ acronym question, which it answered "Adaptive Weight Quantization" (wrong, same as Qwen 2.5). The MoE architecture pays off on math: 86% GSM8K is well above the dense models in the same parameter class.
     </p>
     <p>
-      <strong>GLM 4.7 Flash AWQ:</strong> IFEval 80.3% (prompt strict 80.7%, instruction strict 79.8%). GSM8K still running. Strong instruction-following, in the same range as Gemma 4 E2B (81.0%) and Bonsai (82.8%).
+      <strong>GLM 4.7 Flash AWQ:</strong> IFEval 80.3% (prompt strict 80.7%, instruction strict 79.8%). GSM8K <strong>91.3%</strong> flexible extract, the highest math score in this comparison. GLM also got AWQ's full name right ("Activation-aware Weight Quantization"). It is the strongest non-Bonsai model in this whole comparison on quality metrics.
     </p>
-    <div class="callout">
-      <p><strong>GLM 4.7 GSM8K still running. Latency benchmarks queued.</strong> Updates as results land.</p>
+
+    <div class="callout warn">
+      <p><strong>**Latency caveat for reasoning models.</strong> Both GPT-OSS and GLM 4.7 produced ~21 ms/tok on the 8-prompt latency benchmark, but this number is misleading. With <code>max_tokens=48</code> and the reasoning parser stripping thinking output, the model spent the entire 48-token budget inside its internal thinking phase. The visible <code>content</code> field was empty in every response. The 21 ms/tok measures pure decode speed during thinking, not user-visible latency. For reasoning models, real time-to-first-visible-token can be 5-50x longer depending on how much thinking the model does. <strong>The 8.4 ms/tok for Bonsai is a real wall-clock latency. The 21 ms/tok for GPT-OSS and GLM is not.</strong></p>
     </div>
+
+    <p>
+      <strong>Reasoning model takeaways:</strong>
+    </p>
+    <ul>
+      <li><strong>GLM 4.7 Flash AWQ wins quality:</strong> highest GSM8K (91.3%), strong IFEval (80.3%), correct AWQ answer. Reasoning traces are 2-4x longer than GPT-OSS, so the time-to-final-answer is also 2-4x longer.</li>
+      <li><strong>GPT-OSS 20B wins token economy:</strong> shorter reasoning traces, fits in 256 token budget, faster end-to-end response despite slightly lower benchmark scores. Better default for latency-sensitive use.</li>
+      <li><strong>Both run cleanly on SGLang</strong> with native reasoning parsers. This is the right path for reasoning models: strip the thinking, expose only the answer to downstream consumers.</li>
+      <li><strong>Both score well above the 73-83% IFEval range</strong> of the non-reasoning models, but at a real latency cost that does not show up in the ms/tok number.</li>
+      <li><strong>Note:</strong> IFEval and GSM8K were run on 150 prompts each (vs 541 and 1319 full sets) to fit in the time budget. Scores are statistically less precise but directionally meaningful.</li>
+    </ul>
 
     <h3>How to run them yourself</h3>
     <pre><code># Install
