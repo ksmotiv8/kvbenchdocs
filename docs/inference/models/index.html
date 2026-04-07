@@ -482,7 +482,13 @@ bash scripts/stop-all.sh</code></pre>
             <td class="name">Qwen3.5 9B AWQ (SGLang)</td>
             <td class="worst">31.9%*</td>
             <td class="worst">12.0%*</td>
-            <td>~30</td>
+            <td>31.7</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3.5 9B BF16 (SGLang)</td>
+            <td><em>n/a*</em></td>
+            <td><em>n/a*</em></td>
+            <td>68.5</td>
           </tr>
         </tbody>
       </table>
@@ -501,10 +507,13 @@ bash scripts/stop-all.sh</code></pre>
       <strong>Gemma 4 E4B:</strong> IFEval 86.9%, the highest in this comparison and a meaningful jump over E2B's 81.0%. GSM8K 70.2%, matching Qwen 2.5 7B AWQ. The extra parameters (4.5B effective vs 2.3B) clearly help on both instruction following and math. The cost is 40.5 ms/tok, roughly 5x slower than Bonsai.
     </p>
     <p>
-      <strong>*Qwen3.5 9B: the thinking model problem.</strong> Qwen 3.5 is a reasoning model that generates internal chain-of-thought tokens before producing its final answer. This inflates output length (1000+ tokens per IFEval prompt) and confuses rule-based scorers that expect direct answers. The 31.9% IFEval and 12.0% GSM8K scores do not reflect the model's actual capability. They reflect a benchmark tooling mismatch. With thinking disabled via API parameters, the model generates at ~30 ms/tok on the AWQ variant, which is a valid latency data point. But properly benchmarking thinking models requires either (a) a scorer that strips thinking tokens before evaluation, or (b) explicit thinking-mode control in the lm-eval framework, which is not yet available for the <code>local-chat-completions</code> backend.
+      <strong>*Qwen3.5 9B: the thinking model problem.</strong> Qwen 3.5 is a hybrid reasoning model that generates internal chain-of-thought tokens before producing its final answer. With thinking disabled via <code>enable_thinking=false</code> in the chat template, the model runs fine: AWQ at 31.7 ms/tok, BF16 at 68.5 ms/tok, and both passed 8-9 of 9 quality prompts. But <code>lm-eval</code>'s <code>local-chat-completions</code> backend has no way to pass that flag. The harness runs see the full thinking mode output, which burns the 1280-token budget inside <code>&lt;think&gt;</code> blocks and often never reaches the final answer. The 31.9% IFEval and 12.0% GSM8K scores are harness artifacts, not the model's real capability.
     </p>
     <p>
-      This is an important finding for latency work: <strong>thinking models have a hidden latency cost</strong> that is invisible in published benchmarks (which run with thinking disabled) but shows up immediately in production serving. A thinking model that scores 90% on IFEval with thinking disabled may score 30% when thinking is on, because the extra tokens overflow format constraints. For low-latency pipelines, you need either a non-thinking model or explicit control over thinking mode.
+      BF16 IFEval never completed: at 81 seconds per prompt, it would have taken 12 hours to run 541 prompts. We killed it when the GPU was needed for other tests. BF16 at 68.5 ms/tok is <strong>2.2x slower than AWQ</strong> on this L4. The AWQ variant also ran 2-way concurrent with a 4096-token context, while the BF16 barely fit and had to drop to single-request serving with only 1.67 GB free for KV cache.
+    </p>
+    <p>
+      This is an important finding for latency work: <strong>thinking models have a hidden latency cost</strong> that is invisible in published benchmarks (which typically run with thinking disabled). When thinking is on, the model generates 1000+ extra tokens per request. That turns a 150ms answer into a 30-second one. For low-latency pipelines, you need either a non-thinking model or explicit runtime control over thinking mode. The lm-eval framework does not yet expose that control for chat completions.
     </p>
     <p>
       For reference, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper, with thinking disabled on H100.
