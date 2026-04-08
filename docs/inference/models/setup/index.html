@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Setup and Reproduction: Bonsai, Gemma 4, Qwen, GPT-OSS, GLM</title>
+  <meta name="description" content="Reproducible setup commands, configuration flags, and benchmark scripts for every model tested in the main inference writeup." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
+  <style>
+    :root {
+      --bg: #0a0a0a; --bg-card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --text: #f5f5f7; --text-dim: rgba(245,245,247,0.55); --text-muted: rgba(245,245,247,0.50);
+      --cyan: #22d3ee; --green: #4ade80; --red: #f87171; --yellow: #facc15; --accent: #818cf8;
+      --font: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 15px; }
+    a { color: var(--cyan); text-decoration: none; } a:hover { text-decoration: underline; }
+    .container { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+    header { padding: 80px 0 48px; border-bottom: 1px solid var(--border); }
+    header .meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.02em; }
+    header h1 { font-size: 32px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; margin-bottom: 16px; }
+    header .subtitle { font-size: 16px; color: var(--text-dim); line-height: 1.6; max-width: 640px; }
+    .section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-tag { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 12px; display: block; }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; }
+    h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+    p { margin-bottom: 14px; color: var(--text-dim); }
+    p strong, p b { color: var(--text); font-weight: 600; }
+    .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; font-weight: 600; color: var(--cyan); background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-dim); white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    td.val { color: var(--text); font-weight: 500; }
+    td.best { color: var(--green); font-weight: 600; }
+    td.worst { color: var(--red); }
+    td.name { color: var(--text); }
+    .terminal { background: #111; border: 1px solid var(--border); border-radius: 8px; margin: 20px 0; overflow: hidden; }
+    .terminal-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-dot.r { background: #f87171; } .terminal-dot.y { background: #facc15; } .terminal-dot.g { background: #4ade80; }
+    .terminal-title { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+    .terminal-body { padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--text-dim); overflow-x: auto; white-space: pre; }
+    .terminal-body .t-bold { color: var(--text); font-weight: 600; }
+    .terminal-body .t-cyan { color: var(--cyan); }
+    .terminal-body .t-green { color: var(--green); }
+    .terminal-body .t-dim { color: var(--text-muted); }
+    code { font-family: var(--mono); font-size: 13px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+    pre { background: #111; border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin: 16px 0; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+    pre code { background: none; padding: 0; color: inherit; }
+    .callout { background: var(--bg-card); border-left: 3px solid var(--cyan); padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+    .callout p { margin-bottom: 0; font-size: 14px; }
+    .callout.warn { border-left-color: var(--yellow); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
+    .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-value { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
+    footer p { font-size: 13px; color: var(--text-muted); }
+    ul, ol { margin: 8px 0 14px 20px; }
+    li { color: var(--text-dim); margin-bottom: 6px; font-size: 14px; }
+    li strong { color: var(--text); }
+    .chart { margin: 28px 0; padding: 24px; background: #111; border: 1px solid var(--border); border-radius: 8px; }
+    .chart-title { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .bar-row { display: flex; align-items: center; margin-bottom: 10px; font-family: var(--mono); font-size: 12px; }
+    .bar-label { width: 160px; flex-shrink: 0; color: var(--text-dim); text-align: right; padding-right: 14px; }
+    .bar-track { flex: 1; height: 24px; background: rgba(255,255,255,0.03); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: #000; min-width: 40px; }
+    .bar-fill.green { background: var(--green); } .bar-fill.cyan { background: var(--cyan); }
+    .bar-fill.dim { background: rgba(245,245,247,0.2); color: var(--text-dim); }
+    .bar-fill.red { background: var(--red); }
+    .bar-note { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: right; }
+    @media (max-width: 600px) { header h1 { font-size: 24px; } .stats { grid-template-columns: repeat(2, 1fr); } table { font-size: 11px; } th, td { padding: 6px 8px; } td.name { white-space: normal; min-width: 100px; } .bar-label { width: 100px; font-size: 10px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="meta">2026-04-05 // NVIDIA L4 24GB // <a href="../">models</a> // <a href="../../">inference</a></div>
+    <h1>Setup and Reproduction</h1>
+    <p class="subtitle">
+      Setup commands, configuration flags, and benchmark scripts for every model in the main writeup. No narrative, just reproducible commands.
+    </p>
+  </div>
+</header>
+
+<main>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Overview</span>
+    <h2>What this page covers</h2>
+    <p>
+      This page collects setup commands for the models tested in <a href="../">the main post</a>. For benchmark results and analysis, see the main page. For detailed validation outputs, see <a href="../validation/">validation</a>.
+    </p>
+
+    <h3>Hardware requirements</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Size on disk</th>
+            <th scope="col">VRAM (L4)</th>
+            <th scope="col">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Bonsai 1-bit 8B</td><td>1.15 GB</td><td>~2 GB</td><td>llama.cpp fork</td></tr>
+          <tr><td class="name">Gemma 4 E2B</td><td>9.5 GB</td><td>19.9 GB</td><td>vLLM 0.19+, no CUDA graphs</td></tr>
+          <tr><td class="name">Gemma 4 E4B</td><td>14.9 GB</td><td>20.4 GB</td><td>vLLM, no CUDA graphs (tight)</td></tr>
+          <tr><td class="name">Qwen 2.5 7B AWQ</td><td>5.2 GB</td><td>13.2 GB</td><td>SGLang, CUDA graphs</td></tr>
+          <tr><td class="name">Qwen 3.5 9B AWQ</td><td>8.5 GB</td><td>~15 GB</td><td>SGLang, reasoning model</td></tr>
+          <tr><td class="name">Qwen 3.5 9B BF16</td><td>19 GB</td><td>~22 GB</td><td>SGLang (very tight)</td></tr>
+          <tr><td class="name">GPT-OSS 20B</td><td>13 GB</td><td>~20 GB</td><td>SGLang with --reasoning-parser gpt-oss</td></tr>
+          <tr><td class="name">GLM 4.7 Flash AWQ</td><td>19 GB</td><td>~21 GB</td><td>SGLang with --reasoning-parser glm45</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Setup: Bonsai</span>
+    <h2>Bonsai 1-bit 8B on PrismML's llama.cpp</h2>
+
+    <p>
+      Bonsai uses a custom quantization format (Q1_0_g128) that is not in upstream llama.cpp. You need PrismML's fork. The model is public on HuggingFace, no access token required.
+    </p>
+
+    <h3>What you need</h3>
+    <ul>
+      <li>NVIDIA GPU with CUDA (any modern card works, 4+ GB VRAM)</li>
+      <li>cmake, gcc, git</li>
+      <li><code>huggingface-cli</code> or <code>hf</code> for model download</li>
+    </ul>
+
+    <h3>Setup (one script)</h3>
+    <pre><code>bash scripts/setup-bonsai.sh</code></pre>
+    <p>This script (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/scripts/setup-bonsai.sh" target="_blank" rel="noopener">source</a>) clones the <a href="https://github.com/PrismML-Eng/llama.cpp" target="_blank" rel="noopener">PrismML llama.cpp fork</a>, builds with CUDA, and downloads the <a href="https://huggingface.co/prism-ml/Bonsai-8B-gguf" target="_blank" rel="noopener">Bonsai-8B GGUF</a> (1.15 GB).</p>
+
+    <h3>Start the server</h3>
+    <pre><code>bash scripts/start-bonsai.sh</code></pre>
+    <p>Starts on port 3001 by default. OpenAI-compatible API at <code>http://localhost:3001/v1/chat/completions</code>. On an L4, startup takes about 5 seconds and the model uses ~2 GB VRAM.</p>
+
+    <h3>Verify it works</h3>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="terminal-dot r"></span><span class="terminal-dot y"></span><span class="terminal-dot g"></span>
+        <span class="terminal-title">verify bonsai</span>
+      </div>
+      <div class="terminal-body">
+<span class="t-dim">$</span> curl -s http://localhost:3001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"default",
+       "messages":[{"role":"user","content":"What is 2+2?"}],
+       "max_tokens":16,"temperature":0}' | jq -r '.choices[0].message.content'
+
+<span class="t-bold">2 + 2 = 4.</span>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <p><strong>Fork dependency.</strong> Bonsai only works on PrismML's llama.cpp fork. If upstream llama.cpp or SGLang add Q1_0_g128 support, this dependency goes away. Until then, you are running a vendor fork.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Setup: Gemma 4</span>
+    <h2>Gemma 4 on vLLM</h2>
+
+    <p>
+      Gemma 4 launched April 1, 2026. At time of writing, <strong>SGLang does not support it yet</strong> (<a href="https://github.com/sgl-project/sglang/issues/21952" target="_blank" rel="noopener">issue #21952</a> is open). vLLM v0.19.0 (released April 3) does support it, but requires a bleeding-edge transformers install because the <code>gemma4</code> model type is too new for the latest PyPI release.
+    </p>
+
+    <h3>What you need</h3>
+    <ul>
+      <li>NVIDIA GPU with CUDA, 20+ GB VRAM for E2B, 21+ GB for E4B</li>
+      <li>Python 3.12, <a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> package manager</li>
+    </ul>
+
+    <h3>Setup</h3>
+    <pre><code># E2B (2.3B effective params, 9.5 GB model, fits on L4)
+GEMMA4_MODEL=E2B bash scripts/setup-gemma4.sh
+
+# E4B (4.5B effective params, 14.9 GB model, tight on L4)
+GEMMA4_MODEL=E4B bash scripts/setup-gemma4.sh</code></pre>
+    <p>This script (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/scripts/setup-gemma4.sh" target="_blank" rel="noopener">source</a>) creates a venv, installs vLLM 0.19.0, and installs transformers from source.</p>
+
+    <h3>Start the server</h3>
+    <pre><code>GEMMA4_MODEL=E2B bash scripts/start-gemma4.sh</code></pre>
+    <p>Starts on port 3000 by default. First run downloads the model from HuggingFace (~9.5 GB for E2B, ~14.9 GB for E4B). On an L4, the E2B uses ~19.9 GB VRAM. The E4B uses ~20.4 GB.</p>
+
+    <div class="callout warn">
+      <p><strong>CUDA graphs not working yet.</strong> Neither SGLang nor vLLM supports CUDA graph capture for Gemma 4 at this time. All latency numbers include extra kernel launch overhead that will improve as runtime support matures. Expect 10-30% improvement once CUDA graphs work.</p>
+    </div>
+
+    <h3>VRAM guide</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Model</th><th scope="col">Params (eff)</th><th scope="col">Model size</th><th scope="col">VRAM on L4</th><th scope="col">Fits?</th></tr></thead>
+        <tbody>
+          <tr><td class="name">E2B</td><td>2.3B</td><td>9.5 GB</td><td>~19.9 GB</td><td class="best">Yes</td></tr>
+          <tr><td class="name">E4B</td><td>4.5B</td><td>14.9 GB</td><td>~20.4 GB</td><td class="val">Tight</td></tr>
+          <tr><td class="name">26B-A4B MoE</td><td>3.8B active</td><td>48 GB</td><td>N/A</td><td class="worst">No</td></tr>
+          <tr><td class="name">31B Dense</td><td>30.7B</td><td>60+ GB</td><td>N/A</td><td class="worst">No</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      The MoE model is the most interesting for latency (3.8B active per token from 26B stored), but all 128 experts plus 1 shared expert must be in VRAM even though only 8+1 are active per token. It needs an A100, H100, or H200.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Setup: SGLang models</span>
+    <h2>Setup commands for additional models</h2>
+
+    <p>
+      The following models all run under SGLang on the same L4. Each launch command below was taken from the actual experiment runs. The flags (<code>--mem-fraction-static</code>, <code>--cuda-graph-max-bs</code>, <code>--max-running-requests</code>) are tuned to fit VRAM on a single 24 GB L4 with a small batch size.
+    </p>
+
+    <h3>Qwen 2.5 7B AWQ</h3>
+    <pre><code># Qwen 2.5 7B AWQ
+python -m sglang.launch_server \
+    --model-path /opt/models/qwen/Qwen2.5-7B-Instruct-AWQ \
+    --host 0.0.0.0 --port 3000 \
+    --mem-fraction-static 0.55 --context-length 4096 \
+    --cuda-graph-max-bs 2 --max-running-requests 2</code></pre>
+    <p>Non-reasoning baseline. CUDA graphs are enabled (<code>--cuda-graph-max-bs 2</code>) and give a measurable ms/tok improvement over eager mode. <code>--mem-fraction-static 0.55</code> leaves headroom for a second model to run alongside on the same GPU.</p>
+
+    <h3>Qwen 3.5 9B AWQ (reasoning model)</h3>
+    <pre><code># Qwen 3.5 9B AWQ (reasoning model)
+python -m sglang.launch_server \
+    --model-path cyankiwi/Qwen3.5-9B-AWQ-4bit \
+    --host 0.0.0.0 --port 3000 \
+    --mem-fraction-static 0.55 --context-length 4096 \
+    --cuda-graph-max-bs 2 --max-running-requests 2
+# Note: enable_thinking=false in chat template via API to disable reasoning</code></pre>
+    <p>Qwen 3.5 is a reasoning model by default. To compare it fairly against non-reasoning models, pass <code>enable_thinking=false</code> in the chat template arguments through the API. Otherwise it burns tokens on internal thinking before every answer.</p>
+
+    <h3>Qwen 3.5 9B BF16</h3>
+    <pre><code># Qwen 3.5 9B BF16 (full precision reference)
+python -m sglang.launch_server \
+    --model-path Qwen/Qwen3.5-9B-Instruct \
+    --host 0.0.0.0 --port 3000 \
+    --mem-fraction-static 0.85 --context-length 4096 \
+    --cuda-graph-max-bs 2 --max-running-requests 2</code></pre>
+    <p>Full-precision BF16 variant used to measure the quality cost of AWQ 4-bit. At 19 GB on disk and ~22 GB VRAM, this is a tight fit on an L4. Run it alone, not alongside other models.</p>
+
+    <h3>GPT-OSS 20B</h3>
+    <pre><code># GPT-OSS 20B (reasoning model, native MXFP4)
+python -m sglang.launch_server \
+    --model-path openai/gpt-oss-20b \
+    --host 0.0.0.0 --port 3000 \
+    --mem-fraction-static 0.85 --context-length 8192 \
+    --cuda-graph-max-bs 4 --max-running-requests 4 \
+    --reasoning-parser gpt-oss</code></pre>
+    <p>Ships natively in MXFP4 so there is no extra quantization step. The <code>--reasoning-parser gpt-oss</code> flag splits the reasoning trace from the final answer in the API response. Without it, the reasoning block appears inline and breaks downstream parsing.</p>
+
+    <h3>GLM 4.7 Flash AWQ</h3>
+    <pre><code># GLM 4.7 Flash AWQ (reasoning model)
+python -m sglang.launch_server \
+    --model-path QuantTrio/GLM-4.7-Flash-AWQ \
+    --host 0.0.0.0 --port 3000 \
+    --mem-fraction-static 0.85 --context-length 8192 \
+    --cuda-graph-max-bs 4 --max-running-requests 4 \
+    --reasoning-parser glm45</code></pre>
+    <p>Use <code>--reasoning-parser glm45</code> (note: glm45, not glm47) to separate thinking from the final answer. Same gotcha as GPT-OSS: without the parser, the reasoning is returned as part of <code>message.content</code> and downstream tools see unparsed think blocks.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Reproduce</span>
+    <h2>Run it yourself</h2>
+
+    <p>
+      Everything is in the <a href="https://github.com/ksmotiv8/kvbenchdocs" target="_blank" rel="noopener">inference-bench</a> repo. The benchmark scripts work against any OpenAI-compatible API endpoint.
+    </p>
+
+    <h3>Full setup on a fresh GPU instance</h3>
+    <pre><code># Clone
+git clone https://github.com/ksmotiv8/kvbenchdocs.git
+cd inference-bench
+
+# Install Bonsai (builds llama.cpp, downloads 1.15 GB model)
+bash scripts/setup-bonsai.sh
+
+# Install Gemma 4 (installs vLLM, downloads model on first start)
+GEMMA4_MODEL=E2B bash scripts/setup-gemma4.sh
+
+# Start both servers
+bash scripts/start-bonsai.sh          # port 3001
+GEMMA4_MODEL=E2B bash scripts/start-gemma4.sh  # port 3000
+
+# Run benchmarks
+bash benchmarks/compare.sh 3000 google/gemma-4-E2B-it 3001 default
+
+# Stop everything
+bash scripts/stop-all.sh</code></pre>
+
+    <h3>Minimum hardware</h3>
+    <ul>
+      <li><strong>Bonsai only:</strong> Any NVIDIA GPU with 4+ GB VRAM, 2 GB disk</li>
+      <li><strong>Gemma 4 E2B only:</strong> 24 GB VRAM (L4, RTX 4090, A10G), 15 GB disk</li>
+      <li><strong>Both side by side:</strong> 24 GB VRAM (tight, ~22 GB used), 20 GB disk</li>
+      <li><strong>Gemma 4 E4B + Bonsai:</strong> 24 GB VRAM (very tight, ~22.3 GB used)</li>
+    </ul>
+
+    <h3>What the benchmark scripts measure</h3>
+    <p>
+      <code>benchmarks/latency.sh</code> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/benchmarks/latency.sh" target="_blank" rel="noopener">source</a>) sends 8 prompts with a concise system prompt and measures total latency, token count, and ms/tok for each. It warms up the server before measuring.
+    </p>
+    <p>
+      <code>benchmarks/quality.sh</code> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/benchmarks/quality.sh" target="_blank" rel="noopener">source</a>) sends prompts across factual knowledge, reasoning, and instruction following categories with greedy decoding. Each answer is auto-scored against known correct answers.
+    </p>
+    <p>
+      Both scripts take a port number and model name as arguments. They work with any server that exposes <code>/v1/chat/completions</code>.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Formal benchmarks</span>
+    <h2>How to run IFEval and GSM8K yourself</h2>
+    <pre><code># Install
+pip install "lm-eval[api]"
+
+# IFEval against any OpenAI-compatible server
+lm_eval --model local-chat-completions \
+  --model_args model=default,base_url=http://localhost:3001/v1,num_concurrent=1 \
+  --tasks leaderboard_ifeval --batch_size 1
+
+# GSM8K (chain-of-thought)
+lm_eval --model local-chat-completions \
+  --model_args model=default,base_url=http://localhost:3001/v1,num_concurrent=1 \
+  --tasks gsm8k_cot --batch_size 1</code></pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Going deeper</span>
+    <h2>Custom evals with Inspect AI</h2>
+
+    <p>
+      Standard benchmarks (IFEval, GSM8K) measure general capability. But the question driving this work is more specific: <strong>can these models function as components inside a larger system?</strong> That requires testing things standard benchmarks do not cover: multi-step pipelines, format compliance at scale, and tool calling.
+    </p>
+    <p>
+      <a href="https://inspect.aisi.org.uk/" target="_blank" rel="noopener">Inspect AI</a> is an eval framework built by the UK AI Safety Institute and used by Anthropic, DeepMind, and Grok. It supports composable solver pipelines, built-in tool use, sandboxed code execution, and publishable result bundles. It also natively supports all three of our runtimes (vLLM, SGLang, llama-cpp-python) through simple environment variables.
+    </p>
+
+    <h3>Three custom evals</h3>
+
+    <p>
+      <strong>Pipeline latency</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/pipeline_latency.py" target="_blank" rel="noopener">source</a>). Tests whether multi-step LLM pipelines produce correct output when chained. A 2-step pipeline classifies the input then generates with a targeted prompt. A 4-step pipeline classifies, plans, executes, and verifies. If the blog's thesis is right (low latency enables chained calls), these pipelines should work at interactive speed on the fast models and degrade on the slow ones. Inspect tracks token usage and timing per step, so we can see where the pipeline spends its time.
+    </p>
+
+    <p>
+      <strong>Format compliance</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/format_compliance.py" target="_blank" rel="noopener">source</a>). Our quick test found that Bonsai outputs raw JSON while Gemma 4 wraps it in markdown fences. Two prompts is not enough to make that claim. This eval tests 10 prompts across JSON output, executable Python, yes/no answers, and numeric-only responses. The scorer checks whether the output is machine-parseable without post-processing.
+    </p>
+
+    <p>
+      <strong>Tool calling</strong> (<a href="https://github.com/ksmotiv8/kvbenchdocs/blob/main/inference-bench/evals/tool_calling.py" target="_blank" rel="noopener">source</a>). Tests whether models can use tools (weather lookup, math calculation, database search) when given tool definitions. Simpler than BFCLv3 but directly relevant: if low-latency inference enables agentic workflows, the model needs to call tools correctly. Inspect's built-in tool support makes this a straightforward eval.
+    </p>
+
+    <h3>Setup</h3>
+    <pre><code># Install
+pip install inspect-ai
+
+# Configure for your runtime
+export LLAMA_CPP_PYTHON_BASE_URL=http://localhost:3001/v1    # Bonsai
+export VLLM_BASE_URL=http://localhost:3000/v1                 # Gemma 4
+export SGLANG_BASE_URL=http://localhost:3000/v1               # Qwen
+
+# Run
+inspect eval evals/pipeline_latency.py --model llama-cpp-python/bonsai
+inspect eval evals/format_compliance.py --model vllm/google/gemma-4-E2B-it
+inspect eval evals/tool_calling.py --model sglang/default
+
+# View results (generates static HTML)
+inspect view bundle --output results/</code></pre>
+
+    <div class="callout">
+      <p><strong>Results queued.</strong> These evals will run after the IFEval/GSM8K benchmarks complete. The eval files are in the repo and can be run independently against any OpenAI-compatible server.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>Published 2026-04-05. All benchmarks on NVIDIA L4 24GB (g6.8xlarge, us-west-2).</p>
+    <p><a href="../">main writeup</a> // <a href="../validation/">validation</a> // <a href="../../">inference</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

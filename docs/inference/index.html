@@ -44,9 +44,9 @@
 <main>
   <div class="container">
     <div class="stats">
-      <div class="stat"><div class="stat-value">8.3</div><div class="stat-label">ms/tok (Bonsai 1-bit)</div></div>
-      <div class="stat"><div class="stat-value">20.8</div><div class="stat-label">ms/tok (Gemma 4 E2B)</div></div>
-      <div class="stat"><div class="stat-value">10/12</div><div class="stat-label">quality (both models)</div></div>
+      <div class="stat"><div class="stat-value">8.4</div><div class="stat-label">ms/tok (Bonsai 1-bit)</div></div>
+      <div class="stat"><div class="stat-value">8</div><div class="stat-label">models tested</div></div>
+      <div class="stat"><div class="stat-value">91.3%</div><div class="stat-label">best GSM8K (GLM 4.7)</div></div>
       <div class="stat"><div class="stat-value">L4</div><div class="stat-label">NVIDIA 24GB</div></div>
     </div>
 
@@ -57,9 +57,19 @@
         <p>Low inference latency is not just a speed improvement. It changes what systems you can build. SGLang, speculative decoding, Bonsai 1-bit, and Gemma 4 on a single NVIDIA L4.</p>
       </a>
       <a href="models/" class="post-link">
-        <div class="meta">2026-04-05</div>
-        <h2>Bonsai 1-bit and Gemma 4: Setup, Validation, Results</h2>
-        <p>How to set up and benchmark two new model architectures for low-latency inference. Reproducible scripts, quality tests, and what the numbers actually mean.</p>
+        <div class="meta">2026-04-08</div>
+        <h2>Bonsai 1-bit and Gemma 4</h2>
+        <p>Latency is the binding constraint for systems that use LLMs as components. Eight models tested on a single L4: Bonsai, Gemma 4 E2B/E4B, Qwen 2.5/3.5, GPT-OSS 20B, GLM 4.7 Flash. What the numbers mean and how they change what you can build.</p>
+      </a>
+      <a href="models/setup/" class="post-link">
+        <div class="meta">2026-04-08</div>
+        <h2>Setup and Reproduction</h2>
+        <p>Hardware requirements, launch commands, and benchmark scripts for every model tested. Reproducibility reference, no narrative.</p>
+      </a>
+      <a href="models/validation/" class="post-link">
+        <div class="meta">2026-04-08</div>
+        <h2>Validation and Behavior</h2>
+        <p>Detailed test outputs, formatting quirks, full IFEval/GSM8K tables, and per-model behavior observations. Where the quality claims get receipts.</p>
       </a>
     </div>
   </div>

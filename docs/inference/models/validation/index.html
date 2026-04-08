@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Validation and Behavior: Bonsai, Gemma 4, Qwen, GPT-OSS, GLM</title>
+  <meta name="description" content="Detailed test outputs, formatting quirks, and per-model behavior for Bonsai 1-bit 8B, Gemma 4, Qwen 2.5/3.5, GPT-OSS 20B, and GLM 4.7 Flash AWQ on NVIDIA L4." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
+  <style>
+    :root {
+      --bg: #0a0a0a; --bg-card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --text: #f5f5f7; --text-dim: rgba(245,245,247,0.55); --text-muted: rgba(245,245,247,0.50);
+      --cyan: #22d3ee; --green: #4ade80; --red: #f87171; --yellow: #facc15; --accent: #818cf8;
+      --font: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 15px; }
+    a { color: var(--cyan); text-decoration: none; } a:hover { text-decoration: underline; }
+    .container { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+    header { padding: 80px 0 48px; border-bottom: 1px solid var(--border); }
+    header .meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.02em; }
+    header h1 { font-size: 32px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; margin-bottom: 16px; }
+    header .subtitle { font-size: 16px; color: var(--text-dim); line-height: 1.6; max-width: 640px; }
+    .section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-tag { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 12px; display: block; }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; }
+    h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+    p { margin-bottom: 14px; color: var(--text-dim); }
+    p strong, p b { color: var(--text); font-weight: 600; }
+    .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+    th { text-align: left; padding: 10px 14px; font-weight: 600; color: var(--cyan); background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-dim); white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    td.val { color: var(--text); font-weight: 500; }
+    td.best { color: var(--green); font-weight: 600; }
+    td.worst { color: var(--red); }
+    td.name { color: var(--text); }
+    .terminal { background: #111; border: 1px solid var(--border); border-radius: 8px; margin: 20px 0; overflow: hidden; }
+    .terminal-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-dot.r { background: #f87171; } .terminal-dot.y { background: #facc15; } .terminal-dot.g { background: #4ade80; }
+    .terminal-title { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+    .terminal-body { padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--text-dim); overflow-x: auto; white-space: pre; }
+    .terminal-body .t-bold { color: var(--text); font-weight: 600; }
+    .terminal-body .t-cyan { color: var(--cyan); }
+    .terminal-body .t-green { color: var(--green); }
+    .terminal-body .t-dim { color: var(--text-muted); }
+    code { font-family: var(--mono); font-size: 13px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+    pre { background: #111; border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin: 16px 0; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+    pre code { background: none; padding: 0; color: inherit; }
+    .callout { background: var(--bg-card); border-left: 3px solid var(--cyan); padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+    .callout p { margin-bottom: 0; font-size: 14px; }
+    .callout.warn { border-left-color: var(--yellow); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
+    .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-value { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
+    footer p { font-size: 13px; color: var(--text-muted); }
+    ul, ol { margin: 8px 0 14px 20px; }
+    li { color: var(--text-dim); margin-bottom: 6px; font-size: 14px; }
+    li strong { color: var(--text); }
+    .chart { margin: 28px 0; padding: 24px; background: #111; border: 1px solid var(--border); border-radius: 8px; }
+    .chart-title { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+    .bar-row { display: flex; align-items: center; margin-bottom: 10px; font-family: var(--mono); font-size: 12px; }
+    .bar-label { width: 160px; flex-shrink: 0; color: var(--text-dim); text-align: right; padding-right: 14px; }
+    .bar-track { flex: 1; height: 24px; background: rgba(255,255,255,0.03); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: #000; min-width: 40px; }
+    .bar-fill.green { background: var(--green); } .bar-fill.cyan { background: var(--cyan); }
+    .bar-fill.dim { background: rgba(245,245,247,0.2); color: var(--text-dim); }
+    .bar-fill.red { background: var(--red); }
+    .bar-note { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: right; }
+    @media (max-width: 600px) { header h1 { font-size: 24px; } .stats { grid-template-columns: repeat(2, 1fr); } table { font-size: 11px; } th, td { padding: 6px 8px; } td.name { white-space: normal; min-width: 100px; } .bar-label { width: 100px; font-size: 10px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="meta">2026-04-05 // NVIDIA L4 24GB // <a href="../">models</a> // <a href="../../">inference</a></div>
+    <h1>Validation and Behavior</h1>
+    <p class="subtitle">
+      Detailed test outputs, formatting quirks, and per-model behavior observations. This is where the quality claims in the main writeup get receipts.
+    </p>
+  </div>
+</header>
+
+<main>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Overview</span>
+    <h2>What is on this page</h2>
+    <p>
+      For the high-level findings, see <a href="../">the main writeup</a>. For setup and reproduction commands, see <a href="../setup/">setup</a>. This page contains the detailed validation runs, full benchmark tables, and per-model behavior quirks.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Validation</span>
+    <h2>How I tested quality</h2>
+
+    <p>
+      I ran 12 prompts across four categories: factual knowledge, mathematical reasoning, code correctness, and instruction following. All prompts have objectively verifiable answers. This is a small test suite. It is useful for spotting obvious quality differences, but 12 questions cannot substitute for a proper benchmark. The IFEval and GSM8K results later on this page provide more statistical weight.
+    </p>
+
+    <h3>Factual knowledge: what does AWQ stand for?</h3>
+    <p>
+      This question turned out to be the sharpest discriminator. The correct answer is "Activation-aware Weight Quantization." Six models tested. Three got it wrong (Bonsai said "Approximate Weight Quantization," Qwen 2.5 7B AWQ said "Adaptive Weight Quantization," and GPT-OSS 20B said "Adaptive Weight Quantization"). Three got it right (Gemma 4 E2B, Gemma 4 E4B, and GLM 4.7 Flash AWQ). Three different wrong answers from three different model families, and only Gemma 4 and GLM 4.7 Flash produced the correct expansion.
+    </p>
+
+    <h3>Code correctness: executable output matters</h3>
+    <p>
+      I asked both models to write a Fibonacci function and a string reversal function, then executed the output. Bonsai produced clean, executable Python on both code prompts I tested. Gemma 4 and Qwen wrapped their code in markdown triple-backtick fences (<code>```python ... ```</code>), which is correct for documentation but fails <code>python3</code> execution. Two prompts is a small sample, but if your pipeline feeds LLM output directly into an interpreter, it is worth testing this behavior with your own prompts.
+    </p>
+
+    <h3>Instruction following: JSON output</h3>
+    <p>
+      I asked for raw JSON with specific keys. Bonsai output <code>{"name":"Qwen","language":"Chinese"}</code>, which passes <code>json.loads()</code>. Gemma 4 wrapped it in a markdown code fence, which fails parsing. Same pattern in my tests: Gemma 4 and Qwen produced human-readable formatting. Bonsai produced machine-parseable output. Two format-sensitive prompts is a small sample. Test this with your own prompts before relying on it.
+    </p>
+
+    <h3>Full results</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col">Bonsai 8B</th>
+            <th scope="col">Qwen 2.5 7B AWQ</th>
+            <th scope="col">Gemma 4 E2B</th>
+            <th scope="col">Gemma 4 E4B</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Factual Knowledge</td><td>3/5</td><td>4/5</td><td class="best">5/5</td><td class="best">5/5</td></tr>
+          <tr><td class="name">Reasoning</td><td class="val">2/2</td><td class="val">2/2</td><td class="val">2/2</td><td class="val">2/2</td></tr>
+          <tr><td class="name">Code + Instruction</td><td class="best">5/5</td><td>3/5</td><td>3/5</td><td>3/5</td></tr>
+          <tr><td class="name">Total</td><td class="val">10/12</td><td class="val">9/12</td><td class="val">10/12</td><td class="val">10/12</td></tr>
+          <tr><td class="name">ms/tok</td><td class="best">8.4</td><td>19.1</td><td>20.8</td><td>40.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The AWQ question (covered in the factual knowledge subsection above) was the sharpest discriminator in this set. Remove that one question and the scores nearly converge. The quality differences in 12 prompts are suggestive, not conclusive.
+    </p>
+
+    <div class="callout">
+      <p><strong>Different profiles, not a ranking.</strong> Gemma 4 knows more facts per parameter. Bonsai follows format instructions literally (raw JSON, executable code). Qwen 2.5 7B AWQ is the practical middle: fastest conventional model, mature SGLang runtime, CUDA graphs enabled. Pick based on what your system needs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Benchmarks</span>
+    <h2>IFEval and GSM8K</h2>
+
+    <h3>About the benchmarks</h3>
+
+    <p>
+      <strong><a href="https://arxiv.org/abs/2311.07911" target="_blank" rel="noopener">IFEval</a></strong> (Instruction Following Evaluation) tests whether a model can follow precise formatting constraints: "write exactly 3 paragraphs," "include the word 'elephant' at least twice," "respond in all caps." It has 541 prompts, each with one or more verifiable constraints. Scoring is purely rule-based with no LLM judge. The metric is the average of prompt-level strict accuracy and instruction-level strict accuracy. This benchmark matters for pipeline use cases where the model must follow format instructions exactly.
+    </p>
+
+    <p>
+      <strong><a href="https://arxiv.org/abs/2110.14168" target="_blank" rel="noopener">GSM8K</a></strong> (Grade School Math 8K) tests mathematical reasoning with 1,319 word problems at roughly middle-school difficulty. The model generates a chain-of-thought solution and a final numeric answer. Scoring extracts the last number in the response and compares it to the ground truth. No LLM judge needed. This benchmark matters because math reasoning is one of the first capabilities to degrade under aggressive quantization.
+    </p>
+
+    <p>
+      Both benchmarks hit the model via the OpenAI-compatible chat completions API. The evaluation framework runs on CPU with no GPU contention. Each model was tested one at a time to ensure clean measurements.
+    </p>
+
+    <h3>Results</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">IFEval (OLLM avg)</th>
+            <th scope="col">GSM8K (CoT)</th>
+            <th scope="col">ms/tok</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">Bonsai 1-bit 8B (llama.cpp)</td>
+            <td class="best">82.8%</td>
+            <td class="val">68.9%</td>
+            <td class="best">8.4</td>
+          </tr>
+          <tr>
+            <td class="name">Gemma 4 E2B (vLLM)</td>
+            <td class="val">81.0%</td>
+            <td>63.7%</td>
+            <td>20.8</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen 2.5 7B AWQ (SGLang)</td>
+            <td>73.4%</td>
+            <td class="best">70.6%</td>
+            <td>19.1</td>
+          </tr>
+          <tr>
+            <td class="name">Gemma 4 E4B (vLLM)</td>
+            <td class="best">86.9%</td>
+            <td class="val">70.2%</td>
+            <td>40.5</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3.5 9B AWQ (SGLang)</td>
+            <td class="worst">31.9%*</td>
+            <td class="worst">12.0%*</td>
+            <td>31.7</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3.5 9B BF16 (SGLang)</td>
+            <td><em>n/a*</em></td>
+            <td><em>n/a*</em></td>
+            <td>68.5</td>
+          </tr>
+          <tr>
+            <td class="name">GPT-OSS 20B (SGLang)</td>
+            <td class="val">74.3%</td>
+            <td class="val">86.0%</td>
+            <td>20.97**</td>
+          </tr>
+          <tr>
+            <td class="name">GLM 4.7 Flash AWQ (SGLang)</td>
+            <td class="val">80.3%</td>
+            <td class="best">91.3%</td>
+            <td>20.62**</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      <strong>Bonsai 1-bit 8B leads on instruction following.</strong> IFEval 82.8% (prompt strict 79.9%, instruction strict 85.7%). This is a notable result: the 1-bit model scores higher than both the BF16 Gemma 4 and the INT4 Qwen on a 541-prompt rule-based benchmark. It aligns with what we saw in the quick tests: Bonsai follows format instructions literally, which is exactly what IFEval measures.
+    </p>
+    <p>
+      <strong>GSM8K tells a different story.</strong> Bonsai scored 68.9% on math reasoning. Qwen 2.5 7B AWQ scored 70.6%. The gap is small but Bonsai does not dominate here the way it does on instruction following. Math reasoning is one of the capabilities most sensitive to quantization. A 1-bit model holding within 2 points of an INT4 7B model on 1,319 math problems is respectable, but it is not a clear win.
+    </p>
+    <p>
+      <strong>Gemma 4 E2B:</strong> IFEval 81.0%, close to Bonsai despite having far fewer parameters (2.3B effective vs 8.19B). GSM8K 63.7%, the lowest of the three. Math reasoning at 2.3B effective parameters is limited. For reference, Google's own benchmarks show E4B at 42.5% on AIME 2026, so math is not E2B's strength.
+    </p>
+    <p>
+      <strong>Gemma 4 E4B:</strong> IFEval 86.9%, the highest in this comparison and a meaningful jump over E2B's 81.0%. GSM8K 70.2%, matching Qwen 2.5 7B AWQ. The extra parameters (4.5B effective vs 2.3B) clearly help on both instruction following and math. The cost is 40.5 ms/tok, roughly 5x slower than Bonsai.
+    </p>
+    <p>
+      <strong>*Qwen3.5 9B: the thinking model problem.</strong> Qwen 3.5 is a hybrid reasoning model that generates internal chain-of-thought tokens before producing its final answer. With thinking disabled via <code>enable_thinking=false</code> in the chat template, the model runs fine: AWQ at 31.7 ms/tok, BF16 at 68.5 ms/tok, and both passed 8-9 of 9 quality prompts. But <code>lm-eval</code>'s <code>local-chat-completions</code> backend has no way to pass that flag. The harness runs see the full thinking mode output, which burns the 1280-token budget inside <code>&lt;think&gt;</code> blocks and often never reaches the final answer. The 31.9% IFEval and 12.0% GSM8K scores are harness artifacts, not the model's real capability.
+    </p>
+    <p>
+      BF16 IFEval never completed: at 81 seconds per prompt, it would have taken 12 hours to run 541 prompts. We killed it when the GPU was needed for other tests. BF16 at 68.5 ms/tok is <strong>2.2x slower than AWQ</strong> on this L4. The AWQ variant also ran 2-way concurrent with a 4096-token context, while the BF16 barely fit and had to drop to single-request serving with only 1.67 GB free for KV cache.
+    </p>
+    <p>
+      This is an important finding for latency work: <strong>thinking models have a hidden latency cost</strong> that is invisible in published benchmarks (which typically run with thinking disabled). When thinking is on, the model generates 1000+ extra tokens per request. That turns a 150ms answer into a 30-second one. For low-latency pipelines, you need either a non-thinking model or explicit runtime control over thinking mode. The lm-eval framework does not yet expose that control for chat completions.
+    </p>
+    <p>
+      For reference, Qwen3-8B (the base model Bonsai was built from) scores 81.5% on IFEval and 93.0% on GSM8K per the Bonsai whitepaper, with thinking disabled on H100.
+    </p>
+
+    <h3>GPT-OSS 20B and GLM 4.7 Flash AWQ</h3>
+    <p>
+      To extend the comparison, I am running two more models that represent current-generation MoE architectures designed for efficient inference:
+    </p>
+    <p>
+      <strong><a href="https://huggingface.co/openai/gpt-oss-20b" target="_blank" rel="noopener">GPT-OSS 20B</a></strong> is OpenAI's open-weight MoE model. It has 32 experts with 4 active per token, roughly 4B active parameters. Natively quantized to MXFP4 format (the quantization is baked into the release, not applied afterwards), which keeps the model at 13 GB on disk. Architecturally this is the closest thing to Bonsai in spirit: aggressive weight compression designed for inference efficiency, but using expert routing instead of 1-bit weights.
+    </p>
+    <p>
+      <strong><a href="https://huggingface.co/zai-org/GLM-4.7-Flash" target="_blank" rel="noopener">GLM 4.7 Flash AWQ</a></strong> is a 4-bit AWQ quantization of GLM 4.7 Flash (from <a href="https://huggingface.co/QuantTrio/GLM-4.7-Flash-AWQ" target="_blank" rel="noopener">QuantTrio</a>). GLM 4.7 Flash is Zhipu AI's efficient MoE with 47 layers and 4 active experts per token. The "Flash" variant is the smallest in the GLM 4.7 family (the full GLM 4.7 is 668 GB). AWQ brings it down to 19 GB, which fits on the L4.
+    </p>
+    <p>
+      Both turned out to be reasoning models, but unlike Qwen3.5, SGLang has dedicated reasoning parsers (<code>--reasoning-parser gpt-oss</code> and <code>--reasoning-parser glm45</code>) that strip the thinking tokens into a separate <code>reasoning_content</code> field so the harness sees only the final answer. With reasoning parsers enabled, the IFEval and GSM8K scores look realistic.
+    </p>
+    <p>
+      <strong>GPT-OSS 20B:</strong> IFEval 74.3% (prompt strict 73.3%, instruction strict 75.2%). GSM8K 86.0% on flexible extract. Quality 8/9 on the manual probe. The lone failure was the AWQ acronym question, which it answered "Adaptive Weight Quantization" (wrong, same as Qwen 2.5). The MoE architecture pays off on math: 86% GSM8K is well above the dense models in the same parameter class.
+    </p>
+    <p>
+      <strong>GLM 4.7 Flash AWQ:</strong> IFEval 80.3% (prompt strict 80.7%, instruction strict 79.8%). GSM8K <strong>91.3%</strong> flexible extract, the highest math score in this comparison. GLM also got AWQ's full name right ("Activation-aware Weight Quantization"). It is the strongest non-Bonsai model in this whole comparison on quality metrics.
+    </p>
+
+    <div class="callout warn">
+      <p><strong>**Latency caveat for reasoning models.</strong> Both GPT-OSS and GLM 4.7 produced ~21 ms/tok on the 8-prompt latency benchmark, but this number is misleading. With <code>max_tokens=48</code> and the reasoning parser stripping thinking output, the model spent the entire 48-token budget inside its internal thinking phase. The visible <code>content</code> field was empty in every response. The 21 ms/tok measures pure decode speed during thinking, not user-visible latency. For reasoning models, real time-to-first-visible-token can be 5-50x longer depending on how much thinking the model does. <strong>The 8.4 ms/tok for Bonsai is a real wall-clock latency. The 21 ms/tok for GPT-OSS and GLM is not.</strong></p>
+    </div>
+
+    <p>
+      <strong>Reasoning model takeaways:</strong>
+    </p>
+    <ul>
+      <li><strong>GLM 4.7 Flash AWQ wins quality:</strong> highest GSM8K (91.3%), strong IFEval (80.3%), correct AWQ answer. Reasoning traces are 2-4x longer than GPT-OSS, so the time-to-final-answer is also 2-4x longer.</li>
+      <li><strong>GPT-OSS 20B wins token economy:</strong> shorter reasoning traces, fits in 256 token budget, faster end-to-end response despite slightly lower benchmark scores. Better default for latency-sensitive use.</li>
+      <li><strong>Both run cleanly on SGLang</strong> with native reasoning parsers. This is the right path for reasoning models: strip the thinking, expose only the answer to downstream consumers.</li>
+      <li><strong>Both score well above the 73-83% IFEval range</strong> of the non-reasoning models, but at a real latency cost that does not show up in the ms/tok number.</li>
+      <li><strong>Note:</strong> IFEval and GSM8K were run on 150 prompts each (vs 541 and 1319 full sets) to fit in the time budget. Scores are statistically less precise but directionally meaningful.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Behavior</span>
+    <h2>Per-model behavior quirks</h2>
+
+    <p>
+      One paragraph per model summarizing the formatting, instruction-following, and benchmark quirks observed during testing. These are the concrete behaviors that show up in production pipelines.
+    </p>
+
+    <h3>Bonsai 1-bit 8B</h3>
+    <p>
+      Outputs raw JSON without markdown fences. Outputs executable Python without code fences. Got the AWQ acronym wrong ("Approximate Weight Quantization"). Best at instruction following per IFEval (82.8%).
+    </p>
+
+    <h3>Gemma 4 E2B</h3>
+    <p>
+      Wraps JSON and code in markdown fences. Got the AWQ acronym right. Strong factual recall per parameter (5/5 on knowledge questions despite 2.3B effective params).
+    </p>
+
+    <h3>Gemma 4 E4B</h3>
+    <p>
+      Same formatting behavior as E2B. Highest IFEval in the comparison (86.9%) when given enough parameters. Math reasoning matches Qwen 2.5.
+    </p>
+
+    <h3>Qwen 2.5 7B AWQ</h3>
+    <p>
+      Wraps JSON and code in markdown fences. Got the AWQ acronym wrong ("Adaptive Weight Quantization"). Best math from the older generation models (70.6% GSM8K).
+    </p>
+
+    <h3>Qwen 3.5 9B (AWQ + BF16)</h3>
+    <p>
+      Hybrid reasoning model. Cannot disable thinking mode via lm-eval's chat completions backend. The thinking tokens consume the entire response budget and break rule-based scoring (31.9% IFEval, 12% GSM8K are harness artifacts, not real capability).
+    </p>
+
+    <h3>GPT-OSS 20B</h3>
+    <p>
+      Reasoning model with native MXFP4 quantization. SGLang has a dedicated <code>--reasoning-parser gpt-oss</code> that strips thinking output cleanly. Short reasoning traces (~120-520 chars). Got the AWQ acronym wrong. Strong on math (86% GSM8K).
+    </p>
+
+    <h3>GLM 4.7 Flash AWQ</h3>
+    <p>
+      Reasoning model with <code>--reasoning-parser glm45</code> support in SGLang. Long reasoning traces (~650-2200 chars, 2-4x longer than GPT-OSS). Best math in the entire comparison (91.3% GSM8K). Got the AWQ acronym right.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>Published 2026-04-05. All benchmarks on NVIDIA L4 24GB (g6.8xlarge, us-west-2).</p>
+    <p><a href="../">main writeup</a> // <a href="../setup/">setup</a> // <a href="../../">inference</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
