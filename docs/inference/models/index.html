@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bonsai 1-bit and Gemma 4: What Low-Latency Inference Unlocks</title>
-  <meta name="description" content="Latency is the binding constraint for systems that use LLMs as components. Eight models tested on a single L4. What the numbers mean and what they unlock." />
+  <title>How Low Can LLM Inference Latency Go on a Single L4?</title>
+  <meta name="description" content="Eight models tested on a single NVIDIA L4. What I learned about quantization, speculative decoding, and reasoning models when latency is the binding constraint." />
   <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +19,6 @@
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
     body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 15px; }
     a { color: var(--cyan); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -48,6 +47,10 @@
     .callout { background: var(--bg-card); border-left: 3px solid var(--cyan); padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; }
     .callout p { margin-bottom: 0; font-size: 14px; }
     .callout.warn { border-left-color: var(--yellow); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
+    .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-value { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
     footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
     footer p { font-size: 13px; color: var(--text-muted); }
     ul { margin: 8px 0 14px 20px; }
@@ -65,16 +68,16 @@
     .bar-fill.red { background: var(--red); }
     .bar-fill.yellow { background: var(--yellow); color: #000; }
     .bar-note { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: right; }
-    @media (max-width: 600px) { header h1 { font-size: 24px; } table { font-size: 11px; } th, td { padding: 6px 8px; } td.name { white-space: normal; min-width: 100px; } .bar-label { width: 100px; font-size: 10px; } }
+    @media (max-width: 600px) { header h1 { font-size: 24px; } .stats { grid-template-columns: repeat(2, 1fr); } table { font-size: 11px; } th, td { padding: 6px 8px; } td.name { white-space: normal; min-width: 100px; } .bar-label { width: 100px; font-size: 10px; } }
   </style>
 </head>
 <body>
 
 <header>
   <div class="container">
-    <div class="meta">2026-04-09 // NVIDIA L4 24GB // <a href="../">inference-bench</a></div>
-    <h1>What Low-Latency Inference Unlocks</h1>
-    <p class="subtitle">Eight models tested on a single L4. The fastest one is fast enough to put an LLM somewhere you would not have considered before.</p>
+    <div class="meta">2026-04-09 // NVIDIA L4 24GB // us-west-2</div>
+    <h1>How low can LLM inference latency go on a single L4?</h1>
+    <p class="subtitle">Eight models, three runtimes, one GPU. What I learned about quantization, speculative decoding, and reasoning models when latency is the binding constraint.</p>
   </div>
 </header>
 
@@ -82,21 +85,174 @@
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">Thesis</span>
-    <h2>Latency is what determines where an LLM can sit</h2>
+    <span class="section-tag">Motivation</span>
+    <h2>Latency determines where an LLM can sit</h2>
 
-    <p>Most LLM benchmarks tell you which model is smarter. That is the wrong question if you are putting one inside a system. The right question is <em>where in the system can it sit</em>, and the answer is set by latency.</p>
+    <p>At <a href="https://www.gomomento.com" target="_blank" rel="noopener">Momento</a>, I spend my days obsessing over microsecond-level latency in caches and message buses. That work has given me an intuition that I keep bringing to LLM inference: <strong>latency is not just a number you optimize. It determines what systems you can build.</strong> Cross a threshold and entire architectures that were previously off the table become viable.</p>
 
-    <p>At 2 seconds per response, an LLM is a destination. The user clicks something and waits. At 200 milliseconds, it can sit in a request handler that returns a rendered page. At 50 milliseconds, it can sit inside a streaming pipeline that processes events without anyone noticing. Each threshold opens a different set of architectures. Most published benchmarks ignore the threshold entirely and report ms/tok averaged over compute-rich datacenter hardware.</p>
+    <p>At 2 seconds per response, an LLM is a destination. The user clicks something and waits. At 500 milliseconds, it can sit inside a request handler that returns a rendered page. At 50 milliseconds, it can sit inside a streaming pipeline that processes events without anyone noticing. These thresholds are not incremental improvements. They are different classes of system.</p>
 
-    <p>This post tests how low latency can go on a single NVIDIA L4 (24 GB, ~$0.80/hr) and what changes at each step. Eight models, three runtimes, real wall-clock numbers. <a href="setup/">Setup commands</a> and <a href="validation/">detailed validation</a> are on companion pages.</p>
+    <p>Most published benchmarks report ms/tok averaged over datacenter hardware. That is the wrong answer to the wrong question if what you care about is where in a system an LLM can live. The right question is: <strong>given the hardware I can actually afford and the latency budget my system can actually absorb, which model fits?</strong></p>
+
+    <p>This post tests how low latency can go on a single NVIDIA L4 (24 GB VRAM, roughly 300 GB/s memory bandwidth, about $0.80/hr). I started with a narrow question (does speculative decoding help as much as the papers claim?) and the scope expanded as the weeks went on. It now covers eight models across three runtimes.</p>
+
+    <p>The short version: one model crosses the threshold that matters. Everything else lives in a 19-21 ms/tok cluster where the interesting choices are about quality, output format, and whether you are willing to accept a reasoning model's hidden latency cost.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">Results</span>
-    <h2>Decision table</h2>
+    <span class="section-tag">The hardware</span>
+    <h2>Why the L4</h2>
+
+    <p>I chose the L4 because the constraints are honest. An H100 or H200 will run anything you throw at it, which makes bottleneck analysis harder, not easier. The L4 has modest FP16 throughput and modest memory bandwidth, which means every optimization decision shows up in the numbers immediately.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-value">24 GB</div><div class="stat-label">L4 VRAM</div></div>
+      <div class="stat"><div class="stat-value">~300 GB/s</div><div class="stat-label">memory bandwidth</div></div>
+      <div class="stat"><div class="stat-value">g6.8xl</div><div class="stat-label">EC2 instance</div></div>
+      <div class="stat"><div class="stat-value">Ada (sm89)</div><div class="stat-label">architecture</div></div>
+    </div>
+
+    <p>The key technical point: single-request token generation is memory-bandwidth-bound. Each output token requires reading essentially the full weight matrix from VRAM. On the L4, that means smaller weights translate directly to faster tokens. This mechanism is responsible for most of the results that follow.</p>
+
+    <p>The L4 is also a starting point, not a destination. Everything I measure here gets better on an H200 with HBM3e. But I wanted to understand the fundamentals on hardware where every millisecond of overhead is visible.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Experiment 1</span>
+    <h2>SGLang configurations: does speculative decoding help?</h2>
+
+    <p>I started with <a href="https://github.com/sgl-project/sglang" target="_blank" rel="noopener">SGLang</a>, which consistently posts the lowest single-request latencies I have measured across open-source engines. My first goal was to figure out whether speculative decoding actually helps in the latency regime I care about.</p>
+
+    <p>Speculative decoding tries to solve a real problem: token generation is sequential, each token requires reading the full weight matrix, and latency is the cost. The idea is to use a small draft model to guess several tokens ahead, then verify them in a single forward pass of the main model. If the guesses are right, you get multiple tokens for the cost of one big pass. The catch is that the draft model adds its own overhead, and wrong guesses waste work.</p>
+
+    <p>I tested six configurations with the same setup every time: concise system prompt, short outputs (10-18 tokens), single-request.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Config</th><th>Total</th><th>ms/tok</th><th>VRAM</th><th>Speculation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Qwen 1.5B FP16</td><td class="best">125ms</td><td class="val">13.3</td><td>16.6 GB</td><td>none</td></tr>
+          <tr><td class="name">Llama AWQ + EAGLE3</td><td class="val">244ms</td><td class="val">13.5</td><td class="best">6.2 GB</td><td>EAGLE3</td></tr>
+          <tr><td class="name">Qwen 7B AWQ</td><td class="val">246ms</td><td>18.9</td><td>13.2 GB</td><td>none</td></tr>
+          <tr><td class="name">Qwen 7B AWQ + 0.5B draft</td><td>285ms</td><td>22.0</td><td>21.5 GB</td><td>STANDALONE</td></tr>
+          <tr><td class="name">Llama AWQ + EAGLE3 (64t)</td><td>836ms</td><td class="best">12.9</td><td class="best">6.2 GB</td><td>EAGLE3</td></tr>
+          <tr><td class="name">Llama FP16 + EAGLE3</td><td class="worst">2089ms</td><td class="worst">32.6</td><td>16 GB</td><td>EAGLE3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>The smallest model won.</strong> Qwen 1.5B at FP16, no speculation, 125ms total. That was not the result I expected. I had assumed that a 7B model with a well-tuned draft model would come close on latency and win on quality. It did not. The draft model overhead on short outputs was never recovered.</p>
+
+    <p><strong>Speculation has a fixed cost per call.</strong> On short outputs (10-13 tokens), that fixed cost dominates. STANDALONE with a 0.5B draft added about 40ms per request. On the Llama AWQ + EAGLE3 rows, you can see what speculation actually looks like when it works: the ms/tok drops from 13.5 to 12.9 when the output grows from 18 to 64 tokens, because the per-token savings compound. For genuinely short answers, speculation is an anti-optimization.</p>
+
+    <p><strong>Quantization is the effect that matters.</strong> The best ms/tok (12.9) and best VRAM (6.2 GB) both come from the AWQ INT4 Llama row, not from speculation. AWQ cuts weight size by roughly 4x from FP16, which is where the real latency gain comes from. Speculation was a small adjustment on top of that.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Experiment 2</span>
+    <h2>Then I tried the 1-bit model</h2>
+
+    <p>I pulled in <a href="https://github.com/PrismML-Eng/Bonsai-demo" target="_blank" rel="noopener">1-bit Bonsai 8B</a> out of curiosity. It is an 8B model (built from Qwen3-8B) where every weight is stored as a single sign bit with a shared FP16 scale per 128-weight group. That is 1.125 effective bits per weight, down from 16 in FP16, so the model fits in 1.15 GB on disk. It runs on <a href="https://github.com/PrismML-Eng/llama.cpp" target="_blank" rel="noopener">PrismML's llama.cpp fork</a>. I cloned it, built with CUDA, downloaded the GGUF, and started a server on port 3001 alongside SGLang on 3000.</p>
+
+    <p>I ran the same set of prompts against both and measured wall-clock latency. The 1-bit 8B against the FP16 1.5B felt like an unfair comparison to set up, but the results were clarifying.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-value">1.15 GB</div><div class="stat-label">model on disk</div></div>
+      <div class="stat"><div class="stat-value">8.4 ms/tok</div><div class="stat-label">generation speed</div></div>
+      <div class="stat"><div class="stat-value">82.8%</div><div class="stat-label">IFEval (541 prompts)</div></div>
+      <div class="stat"><div class="stat-value">68.9%</div><div class="stat-label">GSM8K (1319 problems)</div></div>
+    </div>
+
+    <p>Bonsai generates tokens at <strong>8.4 ms/tok</strong>. That is 40% faster per token than the 1.5B FP16 model on the same GPU, and the model has 5.5x as many parameters. The mechanical reason is simple: the L4 is memory-bandwidth-bound, Bonsai's weights are roughly a quarter the size of Qwen 1.5B's even before considering the parameter count, and smaller weights mean less data to move per token.</p>
+
+    <p>On 48-token latency tests, the per-token speed compounds: a typical Bonsai response came in at 100-150ms total against 230ms for the 1.5B baseline. Over 8 test prompts, Bonsai won 7. The one loss happened because Bonsai chose to write a longer answer (27 tokens vs 11), not because it generated more slowly.</p>
+
+    <p><strong>There is a real cost.</strong> Bonsai scored 68.9% on GSM8K against 93.0% for its unquantized base model (Qwen3-8B per the Bonsai whitepaper). That is a 24-point regression on multi-step math. It scored 82.8% on IFEval, which is higher than any other non-reasoning model I tested except Gemma 4 E4B. Aggressive quantization preserves instruction following and structured output much better than it preserves arithmetic.</p>
+
+    <p>Bonsai also produced raw JSON and executable Python in every format-sensitive prompt I tested, without wrapping the output in markdown fences. I did not expect that to matter as much as it does. It turns out to matter a lot, which I will come back to after the rest of the model results.</p>
+
+    <div class="callout warn">
+      <p><strong>Caveat on the runtime:</strong> Bonsai runs on PrismML's vendor fork of llama.cpp, not upstream. That affects the latency comparison in two ways. First, llama.cpp has lower per-request overhead than SGLang for single-stream workloads, so some of the gap may be runtime rather than model. Second, relying on a single-vendor fork in production carries its own risks. The 8.4 ms/tok number is real, but it is not a same-runtime comparison.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Experiment 3</span>
+    <h2>Opening the aperture: Gemma 4, Qwen 3.5, GPT-OSS, GLM 4.7</h2>
+
+    <p>Once Bonsai was set up, I added <a href="https://deepmind.google/models/gemma/gemma-4/" target="_blank" rel="noopener">Gemma 4</a> (E2B and E4B, Google's per-layer-embedding dense models), Qwen 2.5 7B AWQ (as a stable SGLang baseline), Qwen 3.5 9B in AWQ and BF16, <a href="https://huggingface.co/openai/gpt-oss-20b" target="_blank" rel="noopener">GPT-OSS 20B</a> (OpenAI's MoE with native MXFP4), and <a href="https://huggingface.co/zai-org/GLM-4.7-Flash" target="_blank" rel="noopener">GLM 4.7 Flash AWQ</a> (Zhipu's lightweight MoE). I ran the same 8-prompt latency test against each, plus IFEval (541 prompts), GSM8K (1319 problems for non-reasoning models, 150 for reasoning models due to time constraints), and a 12-prompt manual quality suite.</p>
+
+    <div class="chart">
+      <div class="chart-title">Decode latency on L4 (ms per output token, lower is better)</div>
+      <div class="bar-row"><div class="bar-label">Bonsai 1-bit 8B</div><div class="bar-track"><div class="bar-fill green" style="width: 12%;">8.4</div></div></div>
+      <div class="bar-row"><div class="bar-label">Qwen 2.5 7B AWQ</div><div class="bar-track"><div class="bar-fill cyan" style="width: 28%;">19.1</div></div></div>
+      <div class="bar-row"><div class="bar-label">GLM 4.7 Flash AWQ</div><div class="bar-track"><div class="bar-fill yellow" style="width: 30%;">20.6**</div></div></div>
+      <div class="bar-row"><div class="bar-label">Gemma 4 E2B</div><div class="bar-track"><div class="bar-fill cyan" style="width: 30%;">20.8</div></div></div>
+      <div class="bar-row"><div class="bar-label">GPT-OSS 20B</div><div class="bar-track"><div class="bar-fill yellow" style="width: 31%;">21.0**</div></div></div>
+      <div class="bar-row"><div class="bar-label">Qwen 3.5 9B AWQ</div><div class="bar-track"><div class="bar-fill yellow" style="width: 46%;">31.7**</div></div></div>
+      <div class="bar-row"><div class="bar-label">Gemma 4 E4B</div><div class="bar-track"><div class="bar-fill red" style="width: 59%;">40.5</div></div></div>
+      <div class="bar-row"><div class="bar-label">Qwen 3.5 9B BF16</div><div class="bar-track"><div class="bar-fill yellow" style="width: 100%;">68.5**</div></div></div>
+      <div class="bar-note">yellow = reasoning models. The ms/tok is decode rate during thinking, not visible latency.</div>
+    </div>
+
+    <p>The cluster in the middle of the chart (Qwen 2.5, GLM, Gemma E2B, GPT-OSS, all between 19 and 21 ms/tok) is not a coincidence. On the L4, once you get into the 5-10 GB quantized-model range, all four models are doing roughly the same amount of memory traffic per token, and that sets the floor. Bonsai breaks that floor by being much smaller. The slower rows (Gemma E4B, Qwen 3.5 9B BF16) lose because they are bigger.</p>
+
+    <p>The full IFEval and GSM8K numbers, quality test outputs, and per-model behavior details are on the <a href="validation/">validation page</a>. Here are the findings that actually matter.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Observations</span>
+    <h2>What the numbers are telling us</h2>
+
+    <p><strong>One model is actually fast.</strong> Bonsai at 8.4 ms/tok is the only option in the set under 10. Everything else is at least 2.3x slower. The gap is not a few percent at the edges, it is the difference between "this can sit in a request path" and "this is a destination the user waits for."</p>
+
+    <p><strong>Quantization beats speculation for short outputs.</strong> On the L4, INT4 AWQ saves more latency than speculative decoding does. The AWQ row beat the AWQ + EAGLE3 row on total time for short outputs, because speculation has a fixed cost per call that short answers do not amortize. Speculation is a long-output optimization, not a general latency tool.</p>
+
+    <p><strong>Reasoning models hide their latency cost behind a misleading number.</strong> GPT-OSS 20B, GLM 4.7 Flash AWQ, and Qwen 3.5 all show a decode rate in the 20-70 ms/tok band, but the number measures decode <em>during</em> the model's internal thinking phase. In our 48-token latency test, the visible <code>content</code> field was empty in every response for every reasoning model. The model spends the entire budget generating <code>&lt;think&gt;</code> tokens that the user never sees. Real time-to-first-visible-token runs several seconds. GLM 4.7 Flash AWQ has the best math score in the set at 91.3% on GSM8K, and it pays a latency cost users will notice.</p>
+
+    <p><strong>Format behavior splits the set cleanly.</strong> Asked for raw JSON, Bonsai outputs <code>{"name":"Qwen","language":"Chinese"}</code>. Every other model wraps it in a markdown code fence. Asked for an executable Python function, Bonsai outputs the function. The others wrap it. This is suggestive rather than definitive (a small number of prompts), but the pattern was consistent. For use cases where the output feeds into another system without a human in the loop, format literalism is more valuable than a few percentage points of benchmark score.</p>
+
+    <p><strong>Factual recall does not correlate with size or generation.</strong> I asked every model "what does AWQ stand for in the context of LLM quantization?" The correct answer is Activation-aware Weight Quantization. Three models got it right (Gemma 4 E2B, Gemma 4 E4B, GLM 4.7 Flash AWQ). Three got it wrong with three different wrong answers (Bonsai: "Approximate," Qwen 2.5: "Adaptive," GPT-OSS 20B: "Adaptive"). The split does not correlate with parameter count, quantization, or model generation. Knowing the right facts is not a property that scales cleanly.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">What it unlocks</span>
+    <h2>Sub-500ms inference is a different building block</h2>
+
+    <p>The interesting use cases for 8 ms/tok are not "snappier chatbot." They are the cases where an LLM has to fit inside something else's latency budget without adding a noticeable delay.</p>
+
+    <ul>
+      <li><strong>Inline content moderation.</strong> Every message in a chat or comment thread runs through a classifier before delivery. At 2 seconds per call this is an offline batch job. At 400ms it is part of the message delivery path and the user does not notice.</li>
+      <li><strong>Structured extraction on log streams.</strong> Log lines hit an LLM that emits a JSON event with severity, component, and root-cause hypothesis. The next stage is a database write, not a human reader, so Bonsai's markdown-free JSON output matters directly.</li>
+      <li><strong>Streaming function calls in voice agents.</strong> The model needs to produce a tool call before the human speaker has finished the clause. This only works at the low end of the ms/tok range.</li>
+      <li><strong>Search query rewriting in the request path.</strong> Every query gets expanded and clarified by an LLM before hitting the search backend. Adding 50ms is acceptable. Adding 1.5 seconds is not.</li>
+      <li><strong>Inline code review on save.</strong> Lint-style feedback from an LLM that runs on every editor save without perceptible delay.</li>
+    </ul>
+
+    <p>There is a corollary worth calling out. If inference drops to 100ms, every other system in the pipeline has to match. A 100ms LLM call followed by a 500ms vector search is still a 600ms round trip. <strong>Low-latency inference inevitably demands low-latency RAG, context retrieval, and tool execution.</strong> The model stops being the bottleneck and the infrastructure around it becomes the bottleneck. That is the problem space I work in at Momento, and it is where a lot of the interesting systems work is going to happen in the next year.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Decision guide</span>
+    <h2>When to use which model</h2>
+
+    <p>The decision is bounded by what your system can absorb, not what produces the highest leaderboard score. Here is how I think about the choice after running these tests.</p>
 
     <div class="table-wrap">
       <table>
@@ -112,71 +268,17 @@
       </table>
     </div>
 
-    <p><code>**</code> reasoning models. The ms/tok number is decode rate during the model's internal thinking phase, not user-visible latency. Real time-to-first-token is several seconds. <a href="validation/">Full table and per-model behavior on the validation page.</a></p>
+    <p><strong>Bonsai 1-bit 8B.</strong> Pick this when latency is the binding constraint and the work is short-form. Good fit: classification, prompt rewriting, structured extraction, format normalization, tool call generation. Do not rely on it for multi-step arithmetic.</p>
 
-    <div class="chart">
-      <div class="chart-title">Decode latency on L4 (ms per output token, lower is better)</div>
-      <div class="bar-row"><div class="bar-label">Bonsai 1-bit 8B</div><div class="bar-track"><div class="bar-fill green" style="width: 12%;">8.4</div></div></div>
-      <div class="bar-row"><div class="bar-label">Qwen 2.5 7B AWQ</div><div class="bar-track"><div class="bar-fill cyan" style="width: 28%;">19.1</div></div></div>
-      <div class="bar-row"><div class="bar-label">GLM 4.7 Flash AWQ</div><div class="bar-track"><div class="bar-fill yellow" style="width: 30%;">20.6**</div></div></div>
-      <div class="bar-row"><div class="bar-label">Gemma 4 E2B</div><div class="bar-track"><div class="bar-fill cyan" style="width: 30%;">20.8</div></div></div>
-      <div class="bar-row"><div class="bar-label">GPT-OSS 20B</div><div class="bar-track"><div class="bar-fill yellow" style="width: 31%;">21.0**</div></div></div>
-      <div class="bar-row"><div class="bar-label">Qwen 3.5 9B AWQ</div><div class="bar-track"><div class="bar-fill yellow" style="width: 46%;">31.7**</div></div></div>
-      <div class="bar-row"><div class="bar-label">Gemma 4 E4B</div><div class="bar-track"><div class="bar-fill red" style="width: 59%;">40.5</div></div></div>
-      <div class="bar-row"><div class="bar-label">Qwen 3.5 9B BF16</div><div class="bar-track"><div class="bar-fill yellow" style="width: 100%;">68.5**</div></div></div>
-      <div class="bar-note">yellow = reasoning models, decode rate during thinking phase only</div>
+    <p><strong>Qwen 2.5 7B AWQ.</strong> The boring stable default. SGLang has supported it cleanly for months, CUDA graphs work, deployment behavior is predictable. Lower benchmark scores than newer models but no surprises in production.</p>
+
+    <p><strong>Gemma 4 E2B or E4B.</strong> Pick when knowledge density matters more than raw speed. E2B at 81% IFEval on 2.3B effective parameters is impressive on paper, though it still uses around 20 GB of VRAM on the L4 because of its embedding layout. E4B buys roughly 4 IFEval points over E2B for double the decode cost. Both wrap output in markdown, which limits their use as pipeline components.</p>
+
+    <p><strong>GLM 4.7 Flash AWQ or GPT-OSS 20B.</strong> Reasoning models. Pick when answer quality matters more than time-to-first-token and your system can stream the visible answer when it eventually arrives. GLM wins the formal benchmarks (91.3% GSM8K, the best in this comparison). GPT-OSS has shorter reasoning traces and therefore better end-to-end wall-clock time for equivalent work. Do not use either as a pipeline subroutine.</p>
+
+    <div class="callout">
+      <p><strong>Summary.</strong> Bonsai for short-form structured output. Gemma 4 for instruction following and knowledge density. Qwen 2.5 as a stable production default. GLM 4.7 Flash AWQ when math quality matters. GPT-OSS 20B as a faster-responding reasoning alternative. None of them is universally best.</p>
     </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <span class="section-tag">Why Bonsai is interesting</span>
-    <h2>One model crosses a threshold</h2>
-
-    <p>Of the eight models tested, Bonsai 1-bit 8B is the only one under 10 ms/tok. At 8.4 ms/tok, a 50-token response completes in around 420 ms end-to-end including network. Everything else in the set is between 19 and 70 ms/tok, which puts a 50-token response in the 1-3.5 second range. The gap is not subtle.</p>
-
-    <p>The mechanical reason is straightforward. Bonsai weights are 1.15 GB on disk, against 5.2 GB for Qwen 2.5 7B at INT4 and 9.5 GB for Gemma 4 E2B at BF16. Token generation on a memory-bandwidth-bound GPU like the L4 is gated by how much data you have to read per token. Less weight data, faster tokens.</p>
-
-    <p>The cost is real. Bonsai scored 68.9% on GSM8K against 93.0% for its unquantized base model (Qwen3-8B per the Bonsai whitepaper). That is a 24-point regression on multi-step math. It scored 82.8% on IFEval, second only to Gemma 4 E4B at 86.9% among non-reasoning models, and it produced raw JSON and executable code without markdown wrapping in every test prompt I ran. Aggressive quantization preserves instruction following and structured output much better than it preserves arithmetic.</p>
-
-    <p>That tradeoff matters because of what 8 ms/tok lets you do.</p>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <span class="section-tag">What it unlocks</span>
-    <h2>Sub-500ms inference is a different building block</h2>
-
-    <p>The interesting use cases are not "fast chatbot." They are the cases where an LLM call has to fit inside something else's budget.</p>
-
-    <ul>
-      <li><strong>Inline content moderation.</strong> Every message in a chat or comment thread runs through a classifier before it is delivered. At 2 seconds per call this is an offline batch job. At 400 ms it is part of the message delivery path and the user does not notice.</li>
-      <li><strong>Structured extraction in a logging pipeline.</strong> Log lines hit an LLM that emits a JSON event with severity, component, and root-cause hypothesis. The Bonsai-style raw JSON output matters here because the next stage is a database write, not a human reader.</li>
-      <li><strong>Streaming function calls.</strong> Voice assistants and conversational agents that need to invoke a tool before the user finishes their sentence. At 8 ms/tok the model can produce a tool call before a human-paced speaker has finished a clause.</li>
-      <li><strong>Search query rewriting.</strong> Every query gets rewritten by an LLM (clarify intent, expand abbreviations, add filters) before hitting the search backend. Adding 50 ms to a search request is acceptable. Adding 1.5 s is not.</li>
-      <li><strong>Inline code review on edit.</strong> Lint-style feedback from an LLM that runs on every save in an IDE without noticeable delay. This only works at the lower end of the ms/tok range.</li>
-    </ul>
-
-    <p>None of these use cases need a frontier model. They need a model that gives the right answer reliably within a tight latency budget. The decision is bounded by what the system can absorb, not what produces the highest leaderboard score. Once you are below the threshold, model selection becomes a quality and format-compliance question instead of a latency question.</p>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <span class="section-tag">The middle</span>
-    <h2>Everything else lives in a 19-21 ms/tok cluster</h2>
-
-    <p>Four of the eight models (Qwen 2.5 7B AWQ, Gemma 4 E2B, GLM 4.7 Flash AWQ, GPT-OSS 20B) sit between 19 and 21 ms/tok. At this band, model selection is about quality, format behavior, and runtime stability rather than raw speed.</p>
-
-    <ul>
-      <li><strong>Qwen 2.5 7B AWQ</strong> is the boring stable choice. SGLang has supported it cleanly for months, CUDA graphs work, behavior is predictable. Lower benchmark scores than the newer models but no surprises in deployment.</li>
-      <li><strong>Gemma 4 E2B</strong> hits 81% IFEval at 2.3B effective parameters, which is impressive on paper. It still uses around 20 GB of VRAM on the L4 because of its embedding layout, so the "edge" framing in the marketing is generous. It wraps output in markdown fences, which limits its use as a pipeline component.</li>
-      <li><strong>GLM 4.7 Flash AWQ and GPT-OSS 20B</strong> are reasoning models. They show 20-21 ms/tok in the chart but that number measures decode <em>during</em> their internal thinking phase. In our 48-token latency test, every reasoning-model response had an empty visible content field. Real time-to-first-visible-token is several seconds. They post the best benchmark scores in the set (GLM 91.3% on GSM8K, the highest) but they do not belong in the same latency conversation as the rest.</li>
-    </ul>
-
-    <p>Gemma 4 E4B at 40.5 ms/tok and Qwen 3.5 9B BF16 at 68.5 ms/tok are slower options. E4B buys ~4 IFEval points over E2B for roughly double the latency. Qwen 3.5 BF16 is impractical on a single L4 without running into memory and time limits.</p>
   </div>
 </section>
 
@@ -186,14 +288,32 @@
     <h2>What this comparison is and is not</h2>
 
     <ul>
-      <li>Each model runs on a different runtime (llama.cpp for Bonsai, SGLang for Qwen and reasoning models, vLLM for Gemma 4). Cross-model latency comparisons are directional, not absolute. Same-model-different-runtime tests would isolate this confound; no single runtime supports every format in this set.</li>
+      <li>Each model runs on a different runtime (llama.cpp for Bonsai on PrismML's vendor fork, SGLang for Qwen and the reasoning models, vLLM for Gemma 4) with different optimization levels. Take the cross-model latency comparisons as directional, not absolute. Same-model-different-runtime tests would isolate this confound; no single runtime supports every format in the set.</li>
       <li>All numbers are single-request latency. Multi-user serving has different bottlenecks.</li>
-      <li>Bonsai's 24-point GSM8K regression vs its base model is a real cost, not an aside. The 1-bit format is excellent for short structured output and noticeably weaker on multi-step arithmetic.</li>
-      <li>Reasoning model ms/tok measures decode during the thinking phase, not wall-clock time to a visible answer. In our 48-token test the visible content field was empty for every reasoning-model response.</li>
-      <li>Qwen 3.5 9B IFEval and GSM8K results are harness artifacts, not real capability. <code>lm-eval</code> cannot pass <code>enable_thinking=false</code> through the chat-completions API, so the model burns its budget inside <code>&lt;think&gt;</code> blocks and never reaches the answer. The BF16 IFEval was killed after 12 hours of projected runtime.</li>
-      <li>CUDA graphs are not yet supported for Gemma 4 on vLLM, so the Gemma numbers include extra kernel launch overhead the others avoid.</li>
-      <li>Reasoning model IFEval and GSM8K were limited to 150 prompts each (vs 541 / 1319 for non-reasoning models) due to time constraints.</li>
+      <li>Bonsai's 24-point GSM8K regression vs its base model (68.9% vs Qwen3-8B's reported 93.0%) is a real cost, not an aside. The 1-bit format is excellent for short structured output and noticeably weaker on multi-step arithmetic.</li>
+      <li>Reasoning model ms/tok numbers (GPT-OSS, GLM 4.7, Qwen 3.5) measure decode during the thinking phase, not wall-clock time to a visible answer. In our 48-token test the visible content field was empty for every reasoning-model response.</li>
+      <li>Qwen 3.5 9B IFEval and GSM8K results are harness artifacts, not real capability. <code>lm-eval</code> cannot pass <code>enable_thinking=false</code> through the chat-completions API, so the model burns its budget inside <code>&lt;think&gt;</code> blocks. The BF16 IFEval was killed after 12 hours of projected runtime.</li>
+      <li>CUDA graphs are not yet supported for Gemma 4 on vLLM, so the Gemma numbers include kernel launch overhead the others avoid.</li>
+      <li>Reasoning model IFEval and GSM8K were limited to 150 prompts each (vs 541 and 1319 for the non-reasoning models) due to time constraints.</li>
+      <li>The 12-prompt manual quality test is small. The format compliance observation in particular is based on two prompts and is suggestive rather than definitive.</li>
     </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">What's next</span>
+    <h2>Open questions</h2>
+
+    <ul>
+      <li><strong>Gemma 4 26B-A4B MoE on H200.</strong> The MoE variant with 3.8B active params per token is the most architecturally interesting model I did not get to test. It needs 48 GB VRAM at BF16.</li>
+      <li><strong>Quantized Gemma 4.</strong> Running E4B at INT4 or FP8 would cut the model size and should meaningfully improve ms/tok. AWQ and GPTQ variants are starting to appear but SGLang/vLLM support is still stabilizing.</li>
+      <li><strong>Same-runtime comparison.</strong> Running Bonsai and Gemma 4 on the same engine would isolate the model-level latency difference from the runtime overhead.</li>
+      <li><strong>Longer outputs.</strong> All my tests used short outputs (10-48 tokens). Speculative decoding should look better at longer output lengths, and the reasoning model latency story would look very different on longer answers where the thinking overhead is amortized.</li>
+      <li><strong>Low-latency RAG.</strong> The corollary I mentioned earlier: once inference is fast, the retrieval layer needs to match.</li>
+    </ul>
+
+    <p>For setup commands and per-model launch flags, see the <a href="setup/">setup page</a>. For detailed test outputs, full benchmark tables, and per-model behavior quirks, see the <a href="validation/">validation page</a>.</p>
   </div>
 </section>
 
@@ -201,7 +321,7 @@
 
 <footer>
   <div class="container">
-    <p>Published 2026-04-09. All benchmarks on a single NVIDIA L4 24GB.</p>
+    <p>Published 2026-04-09. All benchmarks on a single NVIDIA L4 24GB (g6.8xlarge, us-west-2).</p>
     <p><a href="setup/">setup</a> // <a href="validation/">validation</a> // <a href="../">inference</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
   </div>
 </footer>
