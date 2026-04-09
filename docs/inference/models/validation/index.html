@@ -353,6 +353,20 @@
   </div>
 </section>
 
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Open questions</span>
+    <h2>What I would test next</h2>
+    <ul>
+      <li><strong>Gemma 4 26B-A4B MoE on H200.</strong> The MoE variant with 3.8B active params per token is the most architecturally interesting for latency. It needs 48 GB VRAM at BF16. An H200 with HBM3e bandwidth would give it room and speed.</li>
+      <li><strong>Quantized Gemma 4.</strong> Running E4B at INT4 or FP8 would cut model size and could meaningfully improve ms/tok. AWQ and GPTQ variants are starting to appear on HuggingFace but SGLang/vLLM support is still stabilizing.</li>
+      <li><strong>Same-runtime comparison.</strong> Running Bonsai and Gemma 4 on the same engine would isolate the model-level latency difference from the runtime overhead. Neither engine supports both formats today.</li>
+      <li><strong>Longer outputs.</strong> All my latency tests used short outputs (10 to 48 tokens). Models behave differently on longer generations and speculative decoding becomes more relevant.</li>
+      <li><strong>Bonsai 4B vs Gemma 4 E4B.</strong> Same effective parameter count, very different quantization. Would be a fairer head-to-head than the 8B vs 2.3B comparison here.</li>
+    </ul>
+  </div>
+</section>
+
 </main>
 
 <footer>
