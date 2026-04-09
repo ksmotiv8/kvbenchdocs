@@ -2,77 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inference Benchmarks</title>
-  <meta name="theme-color" content="#0a0a0a" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
+  <meta http-equiv="refresh" content="0; url=models/" />
+  <link rel="canonical" href="models/" />
+  <title>Inference benchmarks</title>
+  <meta name="description" content="Low-latency LLM inference on a single GPU. Redirecting to the main writeup." />
   <style>
-    :root { --bg:#0a0a0a; --border:rgba(255,255,255,0.08); --text:#f5f5f7; --text-dim:rgba(245,245,247,0.55); --text-muted:rgba(245,245,247,0.50); --cyan:#22d3ee; --green:#4ade80; --accent:#818cf8; --font:'Inter',-apple-system,sans-serif; --mono:'JetBrains Mono',monospace; }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{-webkit-font-smoothing:antialiased}
-    body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.7;font-size:15px}
-    a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
-    .container{max-width:780px;margin:0 auto;padding:0 24px}
-    header{padding:80px 0 48px;border-bottom:1px solid var(--border)}
-    header h1{font-size:32px;font-weight:700;letter-spacing:-0.02em;margin-bottom:16px}
-    header p{color:var(--text-dim);font-size:16px;max-width:640px;margin-bottom:14px}
-    .posts{padding:48px 0}
-    .post-link{display:block;padding:24px;margin-bottom:16px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;transition:border-color 0.2s}
-    .post-link:hover{border-color:rgba(255,255,255,0.2);text-decoration:none}
-    .post-link h2{font-size:18px;font-weight:600;margin-bottom:6px;color:var(--text)}
-    .post-link p{font-size:14px;color:var(--text-dim);margin:0}
-    .post-link .meta{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:8px}
-    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:24px 0}
-    .stat{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
-    .stat-value{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text)}
-    .stat-label{font-size:11px;color:var(--text-muted);margin-top:4px}
-    footer{padding:40px 0;border-top:1px solid var(--border);text-align:center}
-    footer p{font-size:13px;color:var(--text-muted)}
+    body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #f5f5f7; line-height: 1.7; padding: 80px 24px; max-width: 640px; margin: 0 auto; }
+    a { color: #22d3ee; }
   </style>
 </head>
 <body>
-<header>
-  <div class="container">
-    <h1>Inference Benchmarks</h1>
-    <p>Low-latency LLM inference on a single GPU. Bonsai 1-bit, Gemma 4, SGLang, speculative decoding.</p>
-    <p><a href="https://github.com/ksmotiv8/kvbenchdocs/tree/main/inference-bench">Scripts</a> // <a href="../">kvbenchdocs</a></p>
-  </div>
-</header>
-<main>
-  <div class="container">
-    <div class="stats">
-      <div class="stat"><div class="stat-value">8.4</div><div class="stat-label">ms/tok (Bonsai 1-bit)</div></div>
-      <div class="stat"><div class="stat-value">8</div><div class="stat-label">models tested</div></div>
-      <div class="stat"><div class="stat-value">91.3%</div><div class="stat-label">best GSM8K (GLM 4.7)</div></div>
-      <div class="stat"><div class="stat-value">L4</div><div class="stat-label">NVIDIA 24GB</div></div>
-    </div>
-
-    <div class="posts">
-      <a href="models/" class="post-link">
-        <div class="meta">2026-04-09</div>
-        <h2>How low can LLM inference latency go on a single L4?</h2>
-        <p>Eight models, three runtimes, one GPU. SGLang speculative decoding, Bonsai 1-bit 8B, Gemma 4 E2B/E4B, Qwen 2.5/3.5, GPT-OSS 20B, GLM 4.7 Flash. What I learned about quantization, reasoning models, and the latency thresholds that actually matter.</p>
-      </a>
-      <a href="models/setup/" class="post-link">
-        <div class="meta">2026-04-09</div>
-        <h2>Setup and reproduction</h2>
-        <p>Hardware requirements, launch commands, and benchmark scripts for every model tested. Reproducibility reference.</p>
-      </a>
-      <a href="models/validation/" class="post-link">
-        <div class="meta">2026-04-09</div>
-        <h2>Validation and behavior</h2>
-        <p>Detailed test outputs, formatting quirks, full IFEval and GSM8K tables, and per-model behavior observations.</p>
-      </a>
-    </div>
-  </div>
-</main>
-<footer>
-  <div class="container">
-    <p><a href="https://github.com/ksmotiv8/kvbenchdocs">ksmotiv8/kvbenchdocs</a></p>
-  </div>
-</footer>
+  <h1>Inference benchmarks</h1>
+  <p>Redirecting to <a href="models/">the main writeup</a>&hellip;</p>
+  <p>If you are not redirected, <a href="models/">click here</a>.</p>
 </body>
 </html>
