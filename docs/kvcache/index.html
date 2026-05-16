@@ -89,9 +89,9 @@
 
     <p>Keeping it in GPU memory competes with active inference. Keeping it in host memory is cheaper, but still bounded, and DRAM prices are moving in the wrong direction. Keeping it in remote memory or storage adds transfer latency, placement problems, and operational complexity. KV caching is not free infrastructure. It is a bet. You are spending scarce memory or storage on the hope that future requests will reuse the same work.</p>
 
-    <h3>Prefix-based KV caching has limited sharing</h3>
+    <h3>Prefix-based KV caching has a narrow sharing model</h3>
 
-    <p>Most production-friendly KV caching today is prefix caching. If a future request starts with the exact same prefix, the engine can reuse the precomputed KV cache for that prefix. That is powerful for repeated system prompts, popular templates, and agent frameworks with stable instruction prefixes. But it is also narrow. Real workloads are messy. Retrieval chunks may appear in different orders. Tool results vary. User-specific context shifts. Two requests may share a lot of semantic material without sharing the exact same prefix.</p>
+    <p>Most production-friendly KV caching today is prefix caching. If a future request starts with the exact same prefix, the engine can reuse the precomputed KV cache for that prefix. The sharing model is strict: exact prefix match or nothing. For general-purpose workloads where retrieval chunks appear in different orders, tool results vary, and user-specific context shifts between requests, two prompts may share a lot of semantic material without sharing the exact same prefix. That limits effective cache hit rates for many common patterns.</p>
 
     <div class="callout">
       <p><strong>The case against KV caching today:</strong> the single-node latency win is bounded, the memory cost is high, and the reuse model is narrow. If you evaluate it as an isolated optimization on a single node, the obvious question is: is all this complexity really worth it? In isolation, often no. But isolation is the wrong frame.</p>
@@ -182,21 +182,31 @@
     <p>At low concurrency, increasing the prefix cache hit ratio helps, but the improvement is modest. At higher concurrency, the same increase in cache hit ratio produces a much larger system effect. Requests per second climbs sharply as more of the prompt is served from cache. Mean request latency moves in the opposite direction, falling fastest at the higher concurrency levels. This is the shape you would expect if KV caching is primarily a systems optimization rather than a single-request latency trick.</p>
 
     <p>The cache hit removes repeated prefill work from the hot path. That frees accelerator capacity, reduces interference, and changes the latency curve at the throughput levels where production systems actually run. This is why the single-request framing is misleading. A cache hit may only save a bounded slice of one request, but at concurrency it changes the operating point of the system.</p>
+
+    <p>This experiment uses a small model on a single node, which does not validate the disaggregated architecture argument directly. But it does demonstrate the mechanism: prefix cache hits remove prefill work from the serving path, and the system-level benefit scales with concurrency. The disaggregation thesis is that this same mechanism becomes even more powerful when prefill and decode run on separate hardware and the KV cache moves between them as a first-class object.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
     <span class="section-tag">Beyond prefixes</span>
-    <h2>Prefix caching is not the end state</h2>
+    <h2>Prefix caching already works for the right workloads</h2>
 
-    <p>The third change is cache blending. Prefix caching is useful, but it is too limited. RAG, agents, and tool-heavy workloads do not always reuse context as a clean prefix. They reuse chunks, facts, tool outputs, memories, and intermediate results that may appear in different positions and combinations. Classic prefix caching struggles with that.</p>
+    <p>Earlier I said prefix caching has a narrow sharing model, and that is true for general-purpose workloads. But there is an important class of workload where prefix caching is not narrow at all: <strong>agentic workflows</strong>.</p>
 
-    <p><a href="https://arxiv.org/abs/2405.16444" target="_blank" rel="noopener">CacheBlend</a> points to a more interesting future. Instead of requiring the reused text to appear as the exact prefix, CacheBlend explores how to reuse precomputed KV caches for multiple text chunks and selectively recompute the parts needed to preserve quality. That matters because it changes cache utilization. Instead of storing one KV cache per session and hoping the exact prefix repeats, the system can store reusable pieces of context and blend them into future requests. This is still a research direction, not a production feature. No major inference framework ships it today. The selective recomputation adds its own latency, and quality preservation depends on workload characteristics. But the direction is right.</p>
+    <p>Agent frameworks typically use stable system prompts, repeated tool definitions, shared instruction prefixes, and persistent context blocks that change slowly between calls. An agent making a series of tool calls against the same backend reuses the same 2K-8K token prefix on every request. Multi-turn conversations with a fixed system prompt reuse the entire instruction block. Code generation agents with stable repository context reuse the project description and file summaries. These patterns are a natural fit for prefix caching because the prefix <em>is</em> the stable part of the workload.</p>
 
-    <p>That can improve effective hit rates. It can also improve storage efficiency, because the same cached chunks can serve many future requests rather than being trapped inside one session-shaped cache object. The more reusable the cached unit becomes, the easier it is to justify the memory or storage spent keeping it around.</p>
+    <p>This is not a theoretical observation. Anthropic's prompt caching, OpenAI's cached tokens, and vLLM's automatic prefix caching all exist because agent-shaped workloads generate high prefix reuse rates without any special effort from the developer. The charts above show what happens to throughput and latency when that reuse is high. For agentic workloads, it often is.</p>
 
-    <p>This is the direction that makes KV caching much more interesting. Not just, "did I see this exact prompt before?" But, <strong>"what reusable context have I already paid to prefill, and how cheaply can I adapt it to this request?"</strong></p>
+    <h3>Cache blending will extend hit rates beyond prefixes</h3>
+
+    <p>The limitation shows up in messier patterns. RAG with variable retrieval chunks. Tool results that differ between calls. User-specific context that shifts position in the prompt. Two requests may share a lot of material without sharing the exact same prefix. Classic prefix caching returns a miss in those cases even when most of the computation could have been reused.</p>
+
+    <p><a href="https://arxiv.org/abs/2405.16444" target="_blank" rel="noopener">CacheBlend</a> points to a more general approach. Instead of requiring reused text to appear as an exact prefix, CacheBlend explores how to reuse precomputed KV caches for multiple text chunks and selectively recompute the parts needed to preserve quality. Instead of storing one KV cache per session and hoping the exact prefix repeats, the system can store reusable pieces of context and blend them into future requests. This is still a research direction, not a production feature. No major inference framework ships it today. The selective recomputation adds its own latency, and quality preservation depends on workload characteristics.</p>
+
+    <p>But the trajectory is clear. Prefix caching already delivers strong hit rates for the workloads that fit its model (agents, multi-turn, stable system prompts). Cache blending would extend that to the workloads that do not (RAG with variable chunks, tool-heavy pipelines with shifting context). The first is production-ready. The second is research. Together, they cover most of the workloads that matter.</p>
+
+    <p>The question is not "does caching work?" Prefix caching already answers that for a growing class of workloads. The question is <strong>"how much of the remaining workload can we bring into the cacheable regime?"</strong> That is what cache blending is trying to solve.</p>
   </div>
 </section>
 
