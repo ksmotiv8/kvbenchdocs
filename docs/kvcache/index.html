@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</title>
+  <meta name="description" content="KV cache starts out as an implementation detail of inference. But inference architecture is moving, and the economics are changing." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" /></noscript>
+  <style>
+    :root {
+      --bg: #0a0a0a; --bg-card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
+      --text: #f5f5f7; --text-dim: rgba(245,245,247,0.55); --text-muted: rgba(245,245,247,0.50);
+      --cyan: #22d3ee; --green: #4ade80; --red: #f87171; --yellow: #facc15; --accent: #818cf8;
+      --font: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; font-size: 15px; }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+    header { padding: 80px 0 48px; border-bottom: 1px solid var(--border); }
+    header .meta { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.02em; }
+    header h1 { font-size: 32px; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; margin-bottom: 16px; }
+    header .subtitle { font-size: 16px; color: var(--text-dim); line-height: 1.6; max-width: 640px; }
+    .section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    .section:last-of-type { border-bottom: none; }
+    .section-tag { font-family: var(--mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cyan); margin-bottom: 12px; display: block; }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; }
+    h3 { font-size: 16px; font-weight: 600; margin-top: 28px; margin-bottom: 8px; }
+    p { margin-bottom: 14px; color: var(--text-dim); }
+    p strong, p b { color: var(--text); font-weight: 600; }
+    em { font-style: italic; }
+    ul { margin: 8px 0 14px 20px; }
+    li { color: var(--text-dim); margin-bottom: 6px; font-size: 14px; }
+    li strong { color: var(--text); }
+    code { font-family: var(--mono); font-size: 13px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+    .callout { background: var(--bg-card); border-left: 3px solid var(--cyan); padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+    .callout p { margin-bottom: 0; font-size: 14px; }
+    .callout.warn { border-left-color: var(--yellow); }
+    footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
+    footer p { font-size: 13px; color: var(--text-muted); }
+    @media (max-width: 600px) { header h1 { font-size: 24px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="meta">2026-05-16 // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
+    <h1>Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</h1>
+    <p class="subtitle">KV cache starts out as an implementation detail of inference. The instinct to save work is right, but the economics are often wrong. Until the architecture shifts and they are not.</p>
+  </div>
+</header>
+
+<main>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">The case against</span>
+    <h2>Why KV caching is hard to justify today</h2>
+
+    <p>Every generated token needs the keys and values from previous tokens so the model can attend to context efficiently. During a request, that scratchpad is not optional. Without it, generation would be hopelessly inefficient. But the fact that KV cache is necessary during inference does not automatically mean it is valuable to preserve after the request is done.</p>
+
+    <p>That distinction matters. In most serving systems today, long-lived KV caching is still surprisingly hard to justify. The instinct to save work is right, but the economics are often wrong. You pay a steep price in memory, complexity, and operational surface area, and in return you may only get a modest improvement on a single request.</p>
+
+    <p>That is why KV caching can look irrational when evaluated in isolation.</p>
+
+    <h3>Single-request latency math is not as exciting as people want it to be</h3>
+
+    <p>In one of our Qwen3-30B-A3B experiments, a 1K input / 512 output request had roughly 135 ms TTFT and about 2.5 seconds of total request latency. If we count the prefill slice as roughly 100 ms out of 2,500 ms, making prefill free only saves about 4% of the request latency. This is an upper bound on what you would save with a 100% KV cache hit rate.</p>
+
+    <p>At 16K input / 512 output, the math gets more interesting, but it still does not become magical. TTFT was about 769 ms out of 3,200 ms total request latency. The upper bound here of prefill time is 24%. That is materially better than the 1K case, but the important variable is not just context length. It is the input/output ratio. KV cache is most effective when the request has a large amount of input context and a relatively small amount of output generation. In that shape of workload, prefill is a larger share of the bill. In a short-input, long-output workload, decode dominates and KV cache has less room to help. This is why Anthropic can give a large discount for cache hits: cached input tokens are not economically equivalent to fresh input tokens that have to be prefetched again. But even in the favorable long-input case, a perfect cache hit does not give you a 10x faster request. It saves the prefill slice.</p>
+
+    <p>It would be convenient to conclude here that KV cache is a nice-to-have as opposed to a meaningful speedup. But the answer is meaningfully more nuanced.</p>
+
+    <p>A 4% or 24% slice may look modest in isolation, but production systems run at higher load and higher concurrency. Latency is measured at a target throughput. GPU capacity is scarce. As throughput rises, utilization, queueing, and pipeline stalls amplify the cost of repeated prefill work. The same slice that looks uninspiring on one request can become a meaningful capacity and tail-latency problem when thousands of requests are competing for the same accelerators.</p>
+
+    <p>Still, the skepticism is warranted. If the only question is, "Can I make this one request much faster by reusing KV cache?", the answer is often disappointing. Not never. Not for every workload. But often enough that KV caching should not be treated as an automatic win.</p>
+
+    <h3>Memory is expensive, and KV cache is enormous</h3>
+
+    <p>Keeping it in GPU memory competes with active inference. Keeping it in host memory is cheaper, but still bounded, and DRAM prices are moving in the wrong direction. Keeping it in remote memory or storage adds transfer latency, placement problems, and operational complexity. KV caching is not free infrastructure. It is a bet. You are spending scarce memory or storage on the hope that future requests will reuse the same work.</p>
+
+    <h3>Prefix-based KV caching has limited sharing</h3>
+
+    <p>Most production-friendly KV caching today is prefix caching. If a future request starts with the exact same prefix, the engine can reuse the precomputed KV cache for that prefix. That is powerful for repeated system prompts, popular templates, and agent frameworks with stable instruction prefixes. But it is also narrow. Real workloads are messy. Retrieval chunks may appear in different orders. Tool results vary. User-specific context shifts. Two requests may share a lot of semantic material without sharing the exact same prefix.</p>
+
+    <div class="callout">
+      <p><strong>The case against KV caching today:</strong> the single-node latency win is bounded, the memory cost is high, and the reuse model is narrow. If you evaluate it as an isolated optimization on a single node, the obvious question is: is all this complexity really worth it? In isolation, often no. But isolation is the wrong frame.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">The shift</span>
+    <h2>Inference is becoming a distributed systems problem</h2>
+
+    <p>Inference scale is expanding faster than the serving architectures around it. As systems get larger and load gets higher, a very old distributed systems problem shows up in a new place: the work that maximizes throughput is not always the work that protects latency.</p>
+
+    <p>Prefill and decode are fundamentally different workloads. Prefill is compute-heavy. Decode is memory-bandwidth-sensitive and latency-sensitive. Most people who follow LLM inference know this by now, but the disparity is still striking. Prefill can have orders of magnitude higher arithmetic density than decode. We are trying to fit two very different jobs onto the same accelerator: one compute-heavy, one memory-bandwidth-sensitive. The hardware is usually great at one profile, but rarely ideal for both at the same time.</p>
+
+    <p>When prefill and decode share the same serving pipeline, prefill can interfere with decode. It can create head-of-line blocking. It can reduce the amount of useful decode work the system can sustain. Chunked prefill is a good mitigation because it prioritizes decode and slices large prefills into smaller chunks. But chunking does not make prefill free. The system still has to generate the KV cache, schedule the work, and absorb the interference.</p>
+
+    <p>This is the real argument for disaggregated prefill and decode. Separate the compute-heavy prefill phase from the latency-sensitive decode phase. Let prefill nodes do prefill. Let decode nodes do decode. Connect them with a KV cache transfer interface.</p>
+
+    <p>That last sentence is the architectural unlock. <strong>Disaggregation creates a natural interface for KV cache.</strong> The prefill call produces KV cache. The decode call consumes KV cache. Once that boundary exists, KV cache is no longer just an internal scratchpad hidden inside one inference worker. It becomes a system primitive.</p>
+
+    <p>Disaggregation is already becoming real. NVIDIA Dynamo describes disaggregated inference as a system where a prefill engine computes the prefill phase and generates KV cache, transfers that KV cache to the decode engine, and then the decode engine performs the decode phase. Cerebras and AWS are pushing the same architectural direction with Trainium doing prefill and Cerebras handling decode.</p>
+
+    <p>That shift changes the question. KV caching is much less compelling when it is bolted onto a single-node serving stack. It becomes much more compelling when the serving architecture already has a clean handoff between prefill and decode. At that point, the cache is not an awkward optimization. It is the object moving across the boundary.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">The economics</span>
+    <h2>The economics are starting to move</h2>
+
+    <p>The second change is that KV cache itself is getting cheaper to store and move. A lot of recent model advancement is really KV cache innovation. DeepSeek is a good example. Each time they introduced a more efficient attention mechanism, part of the breakthrough was reducing the KV cache burden.</p>
+
+    <p>That matters because memory cost is a common objection to KV caching. If attention mechanisms compress the KV cache, the entire break-even calculation changes. Smaller KV cache means more cache entries fit in the same memory budget. Smaller KV cache also means faster transfers from remote memory, SSD, or another node. The cache does not need to become small to matter. It just needs to become small enough that the economics cross over for the workloads people actually run.</p>
+
+    <p>The storage hierarchy is changing too. Historically, it was easy to say, "If the KV cache is not in GPU memory, it is probably too slow to matter." That is becoming less obviously true. High-bandwidth interconnects and fast local NVMe are changing the tradeoff. But the premise is not simply, "can I move the KV cache faster than I can recompute it?" That comparison matters, but it is incomplete. The better question is whether moving or loading the KV cache can relieve the decode GPU from repeated prefill work and let it stay focused on the latency-sensitive part of the pipeline. If storage-backed KV cache reduces prefill pressure, avoids stalls, and keeps scarce accelerator capacity pointed at decode, then it can make sense even when the request-level savings look modest.</p>
+
+    <p>This is not a religious argument. It is a break-even calculation. For a given model and context length, the system has to compare the time to recompute prefill, the time to transfer KV cache over the network, the time to read KV cache from SSD, the cost of reserving memory or storage for that cache, and the probability that the cache will be reused. If transfer or load time is materially lower than recompute time, and reuse probability is high enough, the cache is useful. If not, it is just expensive furniture.</p>
+
+    <p>This is also why production load matters so much. The benefit is not just the milliseconds saved on a single request. It is the prefill work that does not need to be scheduled at peak load. It is the GPU capacity that stays available for decode. It is the queue that does not grow. It is the stall that does not ripple through the pipeline. In a saturated system, capacity and latency are inseparable. Improving useful throughput is often the most reliable way to improve tail latency.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Beyond prefixes</span>
+    <h2>Prefix caching is not the end state</h2>
+
+    <p>The third change is cache blending. Prefix caching is useful, but it is too limited. RAG, agents, and tool-heavy workloads do not always reuse context as a clean prefix. They reuse chunks, facts, tool outputs, memories, and intermediate results that may appear in different positions and combinations. Classic prefix caching struggles with that.</p>
+
+    <p>CacheBlend points to a more interesting future. Instead of requiring the reused text to appear as the exact prefix, CacheBlend explores how to reuse precomputed KV caches for multiple text chunks and selectively recompute the parts needed to preserve quality. That matters because it changes cache utilization. Instead of storing one KV cache per session and hoping the exact prefix repeats, the system can store reusable pieces of context and blend them into future requests.</p>
+
+    <p>That can improve effective hit rates. It can also improve storage efficiency, because the same cached chunks can serve many future requests rather than being trapped inside one session-shaped cache object. The more reusable the cached unit becomes, the easier it is to justify the memory or storage spent keeping it around.</p>
+
+    <p>This is the direction that makes KV caching much more interesting. Not just, "did I see this exact prompt before?" But, <strong>"what reusable context have I already paid to prefill, and how cheaply can I adapt it to this request?"</strong></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">The real argument</span>
+    <h2>Cache hits are gifts of focus</h2>
+
+    <p>This brings us back to the core point. KV caching is not compelling because it makes one request magically faster. The direct single-request latency win is bounded by the prefill slice. The stronger argument is system-level.</p>
+
+    <p><strong>A cache miss is a distraction. A cache hit is a gift of focus.</strong> It lets decode nodes do what they do best: decode.</p>
+
+    <p>That distinction compounds under load. Fewer repeated prefills means less interference, better decode focus, higher goodput, better utilization, and less queueing pressure. That is where latency improves. Not because KV caching is magic, but because the serving system spends less time distracting decode with repeated prefill work.</p>
+
+    <p>This is the part that gets lost when KV caching is discussed only as a request-level latency optimization. At low throughput, a 4% prefill slice looks like a rounding error. At high throughput, that same work competes for scarce GPU capacity and can worsen the latency curve for everyone behind it. Pipeline stalls are not evenly distributed. They show up as tail latency, missed SLOs, and lower effective capacity.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Conclusion</span>
+    <h2>From scratchpad to systems primitive</h2>
+
+    <p>KV caching does not make much sense if you evaluate it as an isolated optimization on a single node. The single-request latency savings are bounded. The memory cost is high. Prefix-based reuse is limited. That critique is real.</p>
+
+    <p>But inference architecture is moving. Disaggregated prefill and decode creates the right interface. Better attention mechanisms reduce the size of the object we need to store and move. Faster networks and SSDs improve the transfer math. Cache blending improves reuse beyond strict prefixes. Rising DRAM costs and scarce GPU capacity make waste harder to ignore.</p>
+
+    <p>That combination changes KV cache from a temporary scratchpad into an inference systems primitive. The goal is not to optimize KV cache in isolation. The goal is to optimize the serving system.</p>
+
+    <p><strong>Throughput first. Decode focus first. Lower latency as the side effect.</strong></p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>Published 2026-05-16.</p>
+    <p><a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
