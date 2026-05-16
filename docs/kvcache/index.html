@@ -44,6 +44,9 @@
     .callout.warn { border-left-color: var(--yellow); }
     footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; }
     footer p { font-size: 13px; color: var(--text-muted); }
+    figure { margin: 28px 0; }
+    figure img { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+    figcaption { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
     @media (max-width: 600px) { header h1 { font-size: 24px; } }
   </style>
 </head>
@@ -90,12 +93,8 @@
 
     <p>Most production-friendly KV caching today is prefix caching. If a future request starts with the exact same prefix, the engine can reuse the precomputed KV cache for that prefix. That is powerful for repeated system prompts, popular templates, and agent frameworks with stable instruction prefixes. But it is also narrow. Real workloads are messy. Retrieval chunks may appear in different orders. Tool results vary. User-specific context shifts. Two requests may share a lot of semantic material without sharing the exact same prefix.</p>
 
-    <h3>Cache invalidation is real</h3>
-
-    <p>There is a fourth problem that is easy to overlook: when the model changes, every cached KV entry becomes invalid. Fine-tuning, version upgrades, quantization changes, even prompt template revisions can all invalidate the cache. In a system that updates models frequently, the amortization window for cached KV may be shorter than the effort required to build and maintain the caching infrastructure.</p>
-
     <div class="callout">
-      <p><strong>The case against KV caching today:</strong> the single-node latency win is bounded, the memory cost is high, the reuse model is narrow, and the cache is invalidated by model changes. If you evaluate it as an isolated optimization on a single node, the obvious question is: is all this complexity really worth it? In isolation, often no. But isolation is the wrong frame.</p>
+      <p><strong>The case against KV caching today:</strong> the single-node latency win is bounded, the memory cost is high, and the reuse model is narrow. If you evaluate it as an isolated optimization on a single node, the obvious question is: is all this complexity really worth it? In isolation, often no. But isolation is the wrong frame.</p>
     </div>
   </div>
 </section>
@@ -135,6 +134,18 @@
     <p>This is not a religious argument. It is a break-even calculation. For a given model and context length, the system has to compare the time to recompute prefill, the time to transfer KV cache over the network, the time to read KV cache from SSD, the cost of reserving memory or storage for that cache, and the probability that the cache will be reused. If transfer or load time is materially lower than recompute time, and reuse probability is high enough, the cache is useful. If not, it is just expensive furniture.</p>
 
     <p>This is also why production load matters so much. The benefit is not just the milliseconds saved on a single request. It is the prefill work that does not need to be scheduled at peak load. It is the GPU capacity that stays available for decode. It is the queue that does not grow. It is the stall that does not ripple through the pipeline. In a saturated system, capacity and latency are inseparable. Improving useful throughput is often the most reliable way to improve tail latency.</p>
+
+    <figure>
+      <img
+        src="/kvbenchdocs/kvcache/throughput-prefix-length.png"
+        alt="Throughput in requests per second increases as common prefix length grows across higher concurrency levels"
+      />
+      <figcaption>
+        Throughput improves as more of the 10K-token prompt is shared across requests. The effect is most visible at higher concurrency, where avoiding repeated prefill work lets the system sustain more requests per second.
+      </figcaption>
+    </figure>
+
+    <p>You can see the effect clearly when varying the amount of shared prefix. With no common prefix, throughput is relatively flat even as concurrency increases. The system repeatedly pays the prefill cost. As the common prefix grows, throughput climbs sharply. At a 10K-token shared prefix, the higher-concurrency runs sustain roughly 3x to 4x more requests per second than the no-prefix case. The cache hit is not merely shaving milliseconds off one request. It is removing repeated prefill work from the serving path, which lets the system absorb more concurrent demand.</p>
   </div>
 </section>
 
