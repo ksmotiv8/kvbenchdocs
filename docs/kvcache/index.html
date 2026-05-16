@@ -147,17 +147,41 @@
 
     <p>This is also why production load matters so much. The benefit is not just the milliseconds saved on a single request. It is the prefill work that does not need to be scheduled at peak load. It is the GPU capacity that stays available for decode. It is the queue that does not grow. It is the stall that does not ripple through the pipeline. In a saturated system, capacity and latency are inseparable. Improving useful throughput is often the most reliable way to improve tail latency.</p>
 
+    <p>We can see this directly in a simple prefix caching experiment with Qwen3-1.7B on an L40S. The setup uses a 10K-token prompt and varies the number of common prefix tokens from 0 to 10K across different concurrency levels. As expected, the vLLM prefix cache hit ratio rises from 0 to 1 as the shared prefix grows. That is the controlled variable. The interesting part is how the serving system responds under concurrency.</p>
+
     <figure>
       <img
-        src="/kvbenchdocs/kvcache/throughput-prefix-length.png"
-        alt="Throughput in requests per second increases as common prefix length grows across higher concurrency levels"
+        src="/kvbenchdocs/kvcache/plot_cache_hit_ratio.png"
+        alt="vLLM prefix cache hit ratio increases from 0 to 1 as common prefix length increases from 0 to 10K tokens"
       />
       <figcaption>
-        Throughput improves as more of the 10K-token prompt is shared across requests. The effect is most visible at higher concurrency, where avoiding repeated prefill work lets the system sustain more requests per second.
+        Prefix cache hit ratio increases linearly with shared prefix length. The experiment uses a 10K-token prompt and varies the common prefix from 0 to 10K tokens.
       </figcaption>
     </figure>
 
-    <p>You can see the effect clearly when varying the amount of shared prefix. With no common prefix, throughput is relatively flat even as concurrency increases. The system repeatedly pays the prefill cost. As the common prefix grows, throughput climbs sharply. At a 10K-token shared prefix, the higher-concurrency runs sustain roughly 3x to 4x more requests per second than the no-prefix case. The cache hit is not merely shaving milliseconds off one request. It is removing repeated prefill work from the serving path, which lets the system absorb more concurrent demand.</p>
+    <figure>
+      <img
+        src="/kvbenchdocs/kvcache/plot_rps.png"
+        alt="Throughput in requests per second increases as common prefix length grows across higher concurrency levels"
+      />
+      <figcaption>
+        Throughput improves as the shared prefix grows. The effect is most pronounced at higher concurrency, where avoiding repeated prefill work lets the system sustain more requests per second.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img
+        src="/kvbenchdocs/kvcache/plot_request_latency.png"
+        alt="Mean request latency decreases as common prefix length grows, especially at higher concurrency"
+      />
+      <figcaption>
+        Mean request latency falls as prefix cache reuse increases. Higher concurrency settings benefit the most, which is the key production signal.
+      </figcaption>
+    </figure>
+
+    <p>At low concurrency, increasing the prefix cache hit ratio helps, but the improvement is modest. At higher concurrency, the same increase in cache hit ratio produces a much larger system effect. Requests per second climbs sharply as more of the prompt is served from cache. Mean request latency moves in the opposite direction, falling fastest at the higher concurrency levels. This is the shape you would expect if KV caching is primarily a systems optimization rather than a single-request latency trick.</p>
+
+    <p>The cache hit removes repeated prefill work from the hot path. That frees accelerator capacity, reduces interference, and changes the latency curve at the throughput levels where production systems actually run. This is why the single-request framing is misleading. A cache hit may only save a bounded slice of one request, but at concurrency it changes the operating point of the system.</p>
   </div>
 </section>
 
