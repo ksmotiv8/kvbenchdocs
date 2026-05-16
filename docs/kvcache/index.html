@@ -147,6 +147,8 @@
 
     <p>This is also why production load matters so much. The benefit is not just the milliseconds saved on a single request. It is the prefill work that does not need to be scheduled at peak load. It is the GPU capacity that stays available for decode. It is the queue that does not grow. It is the stall that does not ripple through the pipeline. In a saturated system, capacity and latency are inseparable. Improving useful throughput is often the most reliable way to improve tail latency.</p>
 
+    <h3>What prefix caching looks like under load</h3>
+
     <p>We can see this directly in a simple prefix caching experiment with Qwen3-1.7B on an L40S. The setup uses a 10K-token prompt and varies the number of common prefix tokens from 0 to 10K across different concurrency levels. As expected, the vLLM prefix cache hit ratio rises from 0 to 1 as the shared prefix grows. That is the controlled variable. The interesting part is how the serving system responds under concurrency.</p>
 
     <figure>
