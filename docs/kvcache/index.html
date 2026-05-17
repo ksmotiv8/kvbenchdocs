@@ -56,13 +56,38 @@
   <div class="container">
     <div class="meta">2026-05-16 // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
     <h1>Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</h1>
-    <p class="subtitle">KV cache starts out as an implementation detail of inference. The economics look wrong until the architecture shifts and they are not.</p>
+    <p class="subtitle">Prefill is turning inference into a distributed systems problem. KV cache is the object at the center of it.</p>
   </div>
 </header>
 
 <main>
 
 <section class="section">
+  <div class="container">
+
+    <p>I have been fascinated by prefill. Not the part everyone talks about (making generation faster), but the part that is underappreciated: <strong>prefill is the work that turns inference into a distributed systems problem.</strong></p>
+
+    <p>Most conversations about LLM serving treat the model as the interesting part. The model is not the interesting part. The interesting part is that prefill and decode have fundamentally different compute profiles, and the moment you separate them, you need something to carry state across the boundary. That something is KV cache. It stops being an implementation detail and starts being a systems primitive.</p>
+
+    <p>This is the same structural shift that happened in data infrastructure when Snowflake separated storage and compute. Before the separation, compute and storage were colocated and scaled together. After the separation, they became independently addressable resources connected by a transfer layer. Disaggregated inference is following the same arc. Prefill nodes produce KV cache. Decode nodes consume it. The transfer layer between them is where the systems work happens.</p>
+
+    <p>That is what excites me about the inference problem right now. It is not a model problem. It is a distributed systems problem with real tradeoffs in placement, caching, transfer, eviction, and capacity planning. The kind of problem where getting the systems layer right compounds across every request.</p>
+
+    <p>This series explores that problem from multiple angles.</p>
+
+    <div class="callout" style="margin-top: 24px; margin-bottom: 8px;">
+      <p><strong>The series</strong></p>
+    </div>
+
+    <ul>
+      <li><strong>This page:</strong> <a href="#case-against">Why KV caching looks wrong until it suddenly looks obvious.</a> The systems-level argument for KV caching, the economics of smaller KV caches, and prefix caching under load.</li>
+      <li><strong><a href="prefix-caching-internals/">Prefix caching internals.</a></strong> How vLLM and SGLang implement prefix caching. The hash-chain technique, the radix tree, and the prefix-bound limitation both share.</li>
+      <li><strong><a href="../">Inference Adventures.</a></strong> Why realistic test documents matter for KV cache benchmarks. How <code>hi hi hi</code> gives misleading compression ratios. Corpus generation with exact token count control.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="case-against">
   <div class="container">
     <span class="section-tag">The case against</span>
     <h2>Why KV caching is hard to justify today</h2>
