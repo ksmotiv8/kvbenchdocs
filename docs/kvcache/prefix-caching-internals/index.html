@@ -56,7 +56,7 @@
 
 <header>
   <div class="container">
-    <div class="meta">2026-05-17 // <a href="../">kvcache</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
+    <div class="meta">2026-05-17 // <a href="../">KV cache series</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
     <h1>vLLM's Hash Chain and Why Prefix Caching Is Still Prefix Caching</h1>
     <p class="subtitle">vLLM hashes KV cache blocks with a chain that encodes the full token history. The lookup is content-addressable but not position-independent. Here is how it works, where the limitation binds, and how SGLang's radix tree compares.</p>
   </div>
@@ -98,7 +98,7 @@
       <p><strong>The bottom line:</strong> vLLM's hash chain is a well-engineered implementation of prefix caching, not a generalization beyond it. It automatically discovers shared prefixes via content hashing, which eliminates the need for explicit prefix tracking. But the reuse model is the same: shared prefixes are reusable, shared non-prefix content is not. SGLang's radix tree, discussed below, has the same fundamental constraint.</p>
     </div>
 
-    <p>This is exactly the gap that research directions like <a href="https://arxiv.org/abs/2405.16444" target="_blank" rel="noopener">CacheBlend</a> are trying to close: reusing precomputed KV cache for text chunks that appear in non-prefix positions by selectively recomputing the cross-attention between cached and uncached segments. If CacheBlend or something like it becomes production-ready, it would change the reuse model from "exact prefix match" to "overlapping chunk reuse with selective recomputation." That is a genuinely different capability, and I think it is one of the more important research directions in inference systems right now. The <a href="../">parent post</a> discusses this in more detail.</p>
+    <p>This is exactly the gap that research directions like <a href="https://arxiv.org/abs/2405.16444" target="_blank" rel="noopener">CacheBlend</a> are trying to close: reusing precomputed KV cache for text chunks that appear in non-prefix positions by selectively recomputing the cross-attention between cached and uncached segments. If CacheBlend or something like it becomes production-ready, it would change the reuse model from "exact prefix match" to "overlapping chunk reuse with selective recomputation." That is a genuinely different capability, and I think it is one of the more important research directions in inference systems right now. The <a href="../why/">the main argument</a> discusses this in more detail.</p>
   </div>
 </section>
 
@@ -211,7 +211,7 @@
 
     <h3>Where both converge</h3>
 
-    <p>For the agentic workloads described in the <a href="../">parent post</a>, where stable system prompts and tool definitions create long, consistent prefixes, both approaches work well. The prefix is long enough that block boundary waste is negligible (for a 4K prefix with 16-token blocks, wasted recomputation is at most 15 tokens, under 0.4%), and the reuse pattern is regular enough that hash-based matching is efficient.</p>
+    <p>For the agentic workloads described in the <a href="../why/">the main argument</a>, where stable system prompts and tool definitions create long, consistent prefixes, both approaches work well. The prefix is long enough that block boundary waste is negligible (for a 4K prefix with 16-token blocks, wasted recomputation is at most 15 tokens, under 0.4%), and the reuse pattern is regular enough that hash-based matching is efficient.</p>
 
     <p>At production scale, the choice between vLLM and SGLang for prefix caching is rarely the binding constraint. Model support, runtime maturity, deployment tooling, and team familiarity typically dominate the decision. The data structure difference becomes visible mainly in multi-turn workloads with high concurrency and variable turn lengths.</p>
   </div>
@@ -248,7 +248,7 @@
 <footer>
   <div class="container">
     <p>Published 2026-05-17.</p>
-    <p><a href="../">KV caching post</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
+    <p><a href="../">KV cache series</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">GitHub</a></p>
   </div>
 </footer>
 
