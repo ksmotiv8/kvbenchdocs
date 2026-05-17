@@ -57,8 +57,8 @@
 <header>
   <div class="container">
     <div class="meta">2026-05-17 // <a href="../">kvcache</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
-    <h1>How vLLM and SGLang Implement Prefix Caching</h1>
-    <p class="subtitle">Both engines reuse KV cache for shared prefixes. vLLM hashes fixed-size blocks. SGLang walks a radix tree. The data structure choice determines matching granularity, eviction behavior, and CPU overhead.</p>
+    <h1>vLLM's Hash Chain Trick and Why Prefix Caching Is Still Prefix Caching</h1>
+    <p class="subtitle">vLLM hashes KV cache blocks with a chain that encodes the full token history. It looks like content-addressable matching. It is still prefix-bound. Here is how it works, why the limitation matters, and how SGLang's radix tree compares.</p>
   </div>
 </header>
 
@@ -66,48 +66,57 @@
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">Context</span>
-    <h2>The same problem, two data structures</h2>
+    <span class="section-tag">The trick</span>
+    <h2>vLLM's hash chain looks like it does more than prefix caching</h2>
 
-    <p>Prefix caching is the most production-ready form of KV cache reuse. If two requests share the same prefix (system prompt, tool definitions, shared context), the engine can skip recomputing the KV cache for the shared portion and reuse the cached result. Both <a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a> and <a href="https://github.com/sgl-project/sglang" target="_blank" rel="noopener">SGLang</a> implement this, but with fundamentally different data structures. The choice of data structure determines the granularity of matching, the overhead of lookup, and the behavior at irregular prefix boundaries.</p>
+    <p><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a>'s Automatic Prefix Caching (APC) uses a technique that, at first glance, sounds more powerful than simple prefix matching. The KV cache is divided into fixed-size blocks (typically 16 tokens on CUDA). Each block is hashed with SHA-256, and the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. This creates a hash chain: a content-dependent fingerprint for every block that encodes the full token history up to that point.</p>
 
-    <p>This companion post to <a href="../">Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</a> examines the implementation in each engine.</p>
+    <p>When a new request arrives, vLLM hashes each block-sized chunk of the input and looks up each hash in a cached block map. If a matching block exists, the engine reuses the precomputed KV cache for that block. If not, it allocates a new block. The hash table gives O(1) lookup per block. The doubly-linked list embedded in each <code>KVCacheBlock</code> gives O(1) LRU eviction. The design is clean, fast, and easy to reason about.</p>
+
+    <p>The hash chain is the interesting part. Because each block's hash depends on all preceding content, two requests with identical blocks at position N will produce the same hash at position N <em>only if all preceding tokens are also identical</em>. This means the system automatically detects shared prefixes without any explicit prefix-matching logic. It looks like content-addressable storage for KV cache blocks.</p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">vLLM</span>
-    <h2>Automatic Prefix Caching: hash-based block matching</h2>
+    <span class="section-tag">The limitation</span>
+    <h2>It is still prefix-bound</h2>
 
-    <p>vLLM's prefix caching operates at <strong>block granularity</strong>. The KV cache is divided into fixed-size blocks (typically 16 tokens). Each block is identified by a hash computed over the token content of that block plus the hash of all preceding blocks. This creates a hash chain: the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. Two requests that diverge at any point will produce different hashes from the divergence point forward.</p>
+    <p>The hash chain is elegant, but it does not escape the prefix constraint. The dependency on all preceding blocks means that <strong>any divergence at any position invalidates every block after it</strong>. If two requests share the first 3,000 tokens but differ at token 3,001, the hash chain breaks at the block containing token 3,001, and every subsequent block gets a different hash. The reuse stops at the divergence point, exactly like traditional prefix caching.</p>
 
-    <h3>Core data structures</h3>
+    <p>This matters because real workloads are not always prefix-shaped. Consider a RAG pipeline where the system prompt is stable but the retrieved chunks vary between requests and appear in different orders. Even if two requests contain the same five documents, swapping the order of documents 2 and 3 breaks the hash chain from that point forward. The KV cache for documents 4 and 5 cannot be reused despite being token-for-token identical, because the preceding hash is different.</p>
+
+    <p>The same limitation applies to tool-calling scenarios where tool results are injected at variable positions, multi-turn conversations where the user message changes the middle of the context, and any workload where shared content appears after a point of divergence. The hash chain detects shared prefixes efficiently. It cannot detect shared suffixes or shared segments in non-prefix positions.</p>
+
+    <p>There are two additional constraints worth noting:</p>
+
+    <p><strong>Block-aligned matching.</strong> Reuse only happens at block boundaries. If two requests share 1,000 tokens and the block size is 16, vLLM reuses 62 blocks (992 tokens) and recomputes the last 8. The waste is at most <code>block_size - 1</code> tokens per request. For long prefixes this is negligible (under 0.4% for a 4K prefix). For short or variable-length shared segments it is more visible.</p>
+
+    <p><strong>No sub-block matching.</strong> Two blocks that share 15 of 16 tokens but differ in one token produce completely different hashes. The hash is all-or-nothing at the block level. There is no partial reuse within a block.</p>
+
+    <div class="callout">
+      <p><strong>The bottom line:</strong> vLLM's hash chain is a clever implementation of prefix caching, not a generalization beyond it. It automatically discovers shared prefixes via content hashing, which eliminates the need for explicit prefix tracking. But the reuse model is the same: shared prefixes are reusable, shared non-prefix content is not.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="section-tag">Internals: vLLM</span>
+    <h2>How vLLM implements it</h2>
 
     <p>The implementation lives in <a href="https://docs.vllm.ai/en/v0.9.2/api/vllm/v1/core/kv_cache_manager.html" target="_blank" rel="noopener"><code>vllm/v1/core/kv_cache_manager.py</code></a>. The key components:</p>
 
     <ul>
       <li><strong><code>KVCacheBlock</code></strong>: contains a <code>block_id</code> (immutable physical address), a <code>block_hash</code> (assigned when the block is full, cleared on eviction), a reference count, and doubly-linked list pointers for the free queue.</li>
       <li><strong><code>BlockPool</code></strong>: manages all physical blocks. Maintains a free block queue (doubly linked list in LRU order) and a cached block map (hash table mapping <code>BlockHashWithGroupId</code> to <code>KVCacheBlock</code>).</li>
-      <li><strong><code>hash_request_tokens()</code></strong>: in <a href="https://docs.vllm.ai/en/v0.9.2/api/vllm/v1/core/kv_cache_utils.html" target="_blank" rel="noopener"><code>kv_cache_utils.py</code></a>, computes SHA-256 hashes for each block of tokens in a request.</li>
+      <li><strong><code>hash_request_tokens()</code></strong>: in <a href="https://docs.vllm.ai/en/v0.9.2/api/vllm/v1/core/kv_cache_utils.html" target="_blank" rel="noopener"><code>kv_cache_utils.py</code></a>, computes SHA-256 hashes for each block of tokens in a request. The hash for each block includes the parent block's hash, creating the chain.</li>
     </ul>
 
-    <h3>How lookup works</h3>
-
-    <p>When a new request arrives, vLLM hashes each block-sized chunk of the input tokens and looks up each hash in the cached block map. If a matching block exists, the logical block table points to the existing physical block (incrementing its reference count). If not, a new block is allocated from the free queue. Eviction follows LRU order: the block at the head of the free queue (least recently used, reference count zero) is reclaimed first.</p>
-
-    <p>The doubly-linked list pointers embedded directly in <code>KVCacheBlock</code> give O(1) insertion and removal, which avoids the overhead of a separate LRU data structure.</p>
-
-    <h3>Design tradeoffs</h3>
-
-    <p><strong>Block-aligned matching.</strong> Prefix reuse only happens at block boundaries. If two requests share 1,000 tokens and the block size is 16, vLLM reuses 62 blocks (992 tokens) and recomputes the last 8 tokens. The wasted recomputation is at most <code>block_size - 1</code> tokens. For long shared prefixes this is negligible. For short or variable-length shared segments, the boundary alignment can reduce effective hit rates.</p>
-
-    <p><strong>Hash collisions.</strong> SHA-256 collisions are astronomically unlikely in practice. The hash chain structure means a collision in any earlier block would cascade, but given the collision probability of SHA-256 this is not a practical concern.</p>
-
-    <p><strong>Simplicity.</strong> The design is straightforward to reason about: blocks are either matched or not, eviction is LRU, and the hash table provides O(1) lookup. The <a href="https://docs.vllm.ai/en/stable/design/prefix_caching/" target="_blank" rel="noopener">design documentation</a> describes the full implementation.</p>
+    <p>The design is intentionally simple. Blocks are either matched or not. Eviction is LRU. The hash table provides O(1) lookup. Fixed-size blocks map cleanly to GPU memory without fragmentation. The <a href="https://docs.vllm.ai/en/stable/design/prefix_caching/" target="_blank" rel="noopener">design documentation</a> describes the full implementation.</p>
 
     <div class="callout">
-      <p><strong>Key reference:</strong> <a href="https://github.com/vllm-project/vllm/issues/2614" target="_blank" rel="noopener">RFC #2614</a> is the original design discussion for automatic prefix caching. <a href="https://github.com/vllm-project/vllm/issues/16016" target="_blank" rel="noopener">Issue #16016</a> discusses cache salting (allowing users to partition the cache namespace).</p>
+      <p><strong>References:</strong> <a href="https://github.com/vllm-project/vllm/issues/2614" target="_blank" rel="noopener">RFC #2614</a> is the original design discussion for automatic prefix caching. <a href="https://github.com/vllm-project/vllm/issues/16016" target="_blank" rel="noopener">Issue #16016</a> discusses cache salting (allowing users to partition the cache namespace).</p>
     </div>
   </div>
 </section>
