@@ -66,7 +66,7 @@
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">The mechanism</span>
+    <span class="section-tag">The technique</span>
     <h2>vLLM's hash chain: automatic prefix detection via content hashing</h2>
 
     <p><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a>'s Automatic Prefix Caching (APC) uses a content-hashing technique that eliminates the need for explicit prefix tracking. The KV cache is divided into fixed-size blocks (typically 16 tokens on CUDA). Each block is hashed with SHA-256, and the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. This creates a hash chain: a content-dependent fingerprint for every block that encodes the full token history up to that point.</p>
