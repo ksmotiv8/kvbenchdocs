@@ -196,7 +196,7 @@
 
     <p>Agent frameworks typically use stable system prompts, repeated tool definitions, shared instruction prefixes, and persistent context blocks that change slowly between calls. An agent making a series of tool calls against the same backend reuses the same 2K-8K token prefix on every request. Multi-turn conversations with a fixed system prompt reuse the entire instruction block. Code generation agents with stable repository context reuse the project description and file summaries. These patterns are a natural fit for prefix caching because the prefix <em>is</em> the stable part of the workload.</p>
 
-    <p>Anthropic's prompt caching, OpenAI's cached tokens, and vLLM's automatic prefix caching all exist because agent-shaped workloads generate high prefix reuse rates without any special effort from the developer. The charts above show the throughput and latency response when reuse is high. For agentic workloads, it frequently is.</p>
+    <p>Anthropic's prompt caching, OpenAI's cached tokens, and vLLM's automatic prefix caching all exist because agent-shaped workloads generate high prefix reuse rates without any special effort from the developer. The charts above show the throughput and latency response when reuse is high. For agentic workloads, it frequently is. (For a deeper look at how vLLM and SGLang implement prefix caching under the hood, see the <a href="prefix-caching-internals/">companion post on prefix caching internals</a>.)</p>
 
     <h3>Cache blending will extend hit rates beyond prefixes</h3>
 
