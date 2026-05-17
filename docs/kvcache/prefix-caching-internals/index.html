@@ -57,8 +57,8 @@
 <header>
   <div class="container">
     <div class="meta">2026-05-17 // <a href="../">kvcache</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
-    <h1>vLLM's Hash Chain Trick and Why Prefix Caching Is Still Prefix Caching</h1>
-    <p class="subtitle">vLLM hashes KV cache blocks with a chain that encodes the full token history. It looks like content-addressable matching. It is still prefix-bound. Here is how it works, why the limitation matters, and how SGLang's radix tree compares.</p>
+    <h1>vLLM's Hash Chain and Why Prefix Caching Is Still Prefix Caching</h1>
+    <p class="subtitle">vLLM hashes KV cache blocks with a chain that encodes the full token history. The lookup is content-addressable but not position-independent. Here is how it works, where the limitation binds, and how SGLang's radix tree compares.</p>
   </div>
 </header>
 
@@ -66,14 +66,14 @@
 
 <section class="section">
   <div class="container">
-    <span class="section-tag">The trick</span>
-    <h2>vLLM's hash chain looks like it does more than prefix caching</h2>
+    <span class="section-tag">The mechanism</span>
+    <h2>vLLM's hash chain: automatic prefix detection via content hashing</h2>
 
-    <p><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a>'s Automatic Prefix Caching (APC) uses a technique that, at first glance, sounds more powerful than simple prefix matching. The KV cache is divided into fixed-size blocks (typically 16 tokens on CUDA). Each block is hashed with SHA-256, and the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. This creates a hash chain: a content-dependent fingerprint for every block that encodes the full token history up to that point.</p>
+    <p><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a>'s Automatic Prefix Caching (APC) uses a content-hashing technique that eliminates the need for explicit prefix tracking. The KV cache is divided into fixed-size blocks (typically 16 tokens on CUDA). Each block is hashed with SHA-256, and the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. This creates a hash chain: a content-dependent fingerprint for every block that encodes the full token history up to that point.</p>
 
-    <p>When a new request arrives, vLLM hashes each block-sized chunk of the input and looks up each hash in a cached block map. If a matching block exists, the engine reuses the precomputed KV cache for that block. If not, it allocates a new block. The hash table gives O(1) lookup per block. The doubly-linked list embedded in each <code>KVCacheBlock</code> gives O(1) LRU eviction. The design is clean, fast, and easy to reason about.</p>
+    <p>When a new request arrives, vLLM hashes each block-sized chunk of the input and looks up each hash in a cached block map. If a matching block exists, the engine reuses the precomputed KV cache for that block. If not, it allocates a new block. The hash table gives O(1) lookup per block. The doubly-linked list embedded in each <code>KVCacheBlock</code> gives O(1) LRU eviction.</p>
 
-    <p>The hash chain is the interesting part. Because each block's hash depends on all preceding content, two requests with identical blocks at position N will produce the same hash at position N <em>only if all preceding tokens are also identical</em>. This means the system automatically detects shared prefixes without any explicit prefix-matching logic. It looks like content-addressable storage for KV cache blocks.</p>
+    <p>Because each block's hash depends on all preceding content, two requests with identical blocks at position N will produce the same hash at position N <em>only if all preceding tokens are also identical</em>. This means the system automatically detects shared prefixes without any explicit prefix-matching logic. The lookup is content-addressable, but it is not position-independent: the hash at any position is a function of the full preceding sequence, not just the block's local content.</p>
   </div>
 </section>
 
@@ -95,8 +95,10 @@
     <p><strong>No sub-block matching.</strong> Two blocks that share 15 of 16 tokens but differ in one token produce completely different hashes. The hash is all-or-nothing at the block level. There is no partial reuse within a block.</p>
 
     <div class="callout">
-      <p><strong>The bottom line:</strong> vLLM's hash chain is a clever implementation of prefix caching, not a generalization beyond it. It automatically discovers shared prefixes via content hashing, which eliminates the need for explicit prefix tracking. But the reuse model is the same: shared prefixes are reusable, shared non-prefix content is not.</p>
+      <p><strong>The bottom line:</strong> vLLM's hash chain is a well-engineered implementation of prefix caching, not a generalization beyond it. It automatically discovers shared prefixes via content hashing, which eliminates the need for explicit prefix tracking. But the reuse model is the same: shared prefixes are reusable, shared non-prefix content is not. SGLang's radix tree, discussed below, has the same fundamental constraint.</p>
     </div>
+
+    <p>This is exactly the gap that research directions like <a href="https://arxiv.org/abs/2405.16444" target="_blank" rel="noopener">CacheBlend</a> are trying to close: reusing precomputed KV cache for text chunks that appear in non-prefix positions by selectively recomputing the cross-attention between cached and uncached segments. If CacheBlend or something like it becomes production-ready, it would change the reuse model from "exact prefix match" to "overlapping chunk reuse with selective recomputation." That is a genuinely different capability, and I think it is one of the more important research directions in inference systems right now. The <a href="../">parent post</a> discusses this in more detail.</p>
   </div>
 </section>
 
