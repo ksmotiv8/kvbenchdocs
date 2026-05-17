@@ -58,7 +58,7 @@
   <div class="container">
     <div class="meta">2026-05-17 // <a href="../">kvcache</a> // <a href="https://github.com/ksmotiv8/kvbenchdocs">kvbenchdocs</a></div>
     <h1>How vLLM and SGLang Implement Prefix Caching</h1>
-    <p class="subtitle">Both engines reuse KV cache for shared prefixes. vLLM hashes fixed-size blocks. SGLang walks a radix tree. The difference matters most when prefix boundaries are irregular.</p>
+    <p class="subtitle">Both engines reuse KV cache for shared prefixes. vLLM hashes fixed-size blocks. SGLang walks a radix tree. The data structure choice determines matching granularity, eviction behavior, and CPU overhead.</p>
   </div>
 </header>
 
@@ -71,7 +71,7 @@
 
     <p>Prefix caching is the most production-ready form of KV cache reuse. If two requests share the same prefix (system prompt, tool definitions, shared context), the engine can skip recomputing the KV cache for the shared portion and reuse the cached result. Both <a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a> and <a href="https://github.com/sgl-project/sglang" target="_blank" rel="noopener">SGLang</a> implement this, but with fundamentally different data structures. The choice of data structure determines the granularity of matching, the overhead of lookup, and the behavior at irregular prefix boundaries.</p>
 
-    <p>This companion post to <a href="../">Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</a> examines how each engine works under the hood.</p>
+    <p>This companion post to <a href="../">Why KV Caching Looks Wrong Until It Suddenly Looks Obvious</a> examines the implementation in each engine.</p>
   </div>
 </section>
 
@@ -80,7 +80,7 @@
     <span class="section-tag">vLLM</span>
     <h2>Automatic Prefix Caching: hash-based block matching</h2>
 
-    <p>vLLM's prefix caching operates at <strong>block granularity</strong>. The KV cache is divided into fixed-size blocks (typically 16 tokens). Each block is identified by a hash computed over the token content of that block plus the hash of all preceding blocks. This creates a hash chain: the identity of block N depends on blocks 0 through N, so two requests that diverge at any point will produce different hashes from the divergence point forward.</p>
+    <p>vLLM's prefix caching operates at <strong>block granularity</strong>. The KV cache is divided into fixed-size blocks (typically 16 tokens). Each block is identified by a hash computed over the token content of that block plus the hash of all preceding blocks. This creates a hash chain: the hash of block N incorporates the hashes of all preceding blocks (0 through N-1) plus block N's own token content. Two requests that diverge at any point will produce different hashes from the divergence point forward.</p>
 
     <h3>Core data structures</h3>
 
@@ -152,7 +152,9 @@
 
     <p><strong>Token-level granularity.</strong> The radix tree can match prefixes at any token boundary, not just block boundaries. This means higher effective hit rates when shared prefixes have variable lengths. For multi-turn conversations where each turn appends to the prefix, the radix tree captures the exact shared portion without wasting tokens at block boundaries.</p>
 
-    <p><strong>Structural overhead.</strong> Maintaining a radix tree requires dynamic allocation and pointer traversal, which introduces minor CPU overhead compared to a flat hash table lookup. Under high concurrency, this overhead can become visible, though in practice it is small relative to the GPU-side computation.</p>
+    <p><strong>Structural overhead.</strong> Maintaining a radix tree requires dynamic allocation and pointer traversal, which introduces CPU overhead compared to a flat hash table lookup. The tree also creates memory fragmentation over time as nodes are allocated and freed. Under high concurrency, both the traversal cost and the allocation patterns can become visible, though in practice they are small relative to the GPU-side computation.</p>
+
+    <p><strong>Eviction.</strong> When the cache is full, SGLang evicts leaf nodes from the radix tree in LRU order. Evicting a leaf frees its KV cache indices but preserves the parent node and any shared prefixes that other requests still reference. This means partially-shared prefixes are retained as long as at least one descendant is live. The tradeoff is that the tree structure itself consumes host memory proportional to the number of distinct prefixes, not just the number of cached KV entries.</p>
 
     <p><strong>Multi-turn awareness.</strong> A <a href="https://github.com/sgl-project/sglang/pull/16521" target="_blank" rel="noopener">recent fix (PR #16521)</a> corrected the radix cache key computation to include generated tokens in multi-turn scenarios, using <code>token_ids = (req.origin_input_ids + req.output_ids)[:kv_committed_len]</code>. This ensures that the cache correctly represents the full conversation history, not just the original input.</p>
 
@@ -186,19 +188,21 @@
       </table>
     </div>
 
-    <h3>Where vLLM's approach wins</h3>
+    <h3>Where vLLM's approach has advantages</h3>
 
-    <p><strong>Templated workloads with consistent prefix lengths.</strong> If every request starts with the same 4K-token system prompt, both engines will cache it effectively. But vLLM's flat hash lookup has lower CPU overhead per request, which matters at very high request rates. The block-aligned design is also simpler to reason about for capacity planning: each block is a known fixed size, and the eviction behavior is straightforward LRU.</p>
+    <p><strong>Templated workloads with consistent prefix lengths.</strong> If every request starts with the same 4K-token system prompt, both engines will cache it effectively. vLLM's flat hash lookup should have lower CPU overhead per request than a tree traversal, though I have not profiled this directly. The block-aligned design is also simpler to reason about for capacity planning: each block is a known fixed size, eviction is straightforward LRU, and the memory layout maps cleanly to fixed-size GPU allocations without fragmentation concerns.</p>
 
-    <h3>Where SGLang's approach wins</h3>
+    <h3>Where SGLang's approach has advantages</h3>
 
-    <p><strong>Multi-turn conversations and variable-length shared context.</strong> In a multi-turn chat, each turn extends the prefix by a different number of tokens. The radix tree captures the exact shared history without boundary waste. <a href="https://www.runpod.io/blog/sglang-vs-vllm-kv-cache" target="_blank" rel="noopener">RunPod benchmarks</a> showed SGLang delivering consistent 30-31 tok/s under high concurrency in multi-turn scenarios, while vLLM dropped from 22 to 16 tok/s as cache pressure increased. SGLang's scheduler also uses radix tree matching for cache-aware routing, which can direct requests to the node most likely to have a cache hit.</p>
+    <p><strong>Multi-turn conversations and variable-length shared context.</strong> In a multi-turn chat, each turn extends the prefix by a different number of tokens. The radix tree captures the exact shared history without boundary waste. <a href="https://www.runpod.io/blog/sglang-vs-vllm-kv-cache" target="_blank" rel="noopener">RunPod benchmarked</a> both engines on multi-turn scenarios with DeepSeek-R1-Distill-Llama-70B on 2xH100 and found SGLang maintained higher throughput under cache pressure, though the gap was roughly 10%, not an order of magnitude. Configuration differences (batch size, cache size, eviction tuning) make third-party benchmarks hard to generalize from. The architectural advantage of token-level matching is real but its production magnitude depends on the specific workload shape.</p>
+
+    <p>SGLang's scheduler also uses radix tree matching for cache-aware request routing, directing requests to the node most likely to have a cache hit. This is an advantage for multi-node deployments where cache locality affects performance.</p>
 
     <h3>Where both converge</h3>
 
-    <p>For the agentic workloads described in the <a href="../">parent post</a>, where stable system prompts and tool definitions create long, consistent prefixes, both approaches work well. The prefix is long enough that block boundary waste is negligible, and the reuse pattern is regular enough that hash-based matching is efficient. The architectural difference matters most at the edges: short prefixes, variable turn lengths, and high concurrency with cache pressure.</p>
+    <p>For the agentic workloads described in the <a href="../">parent post</a>, where stable system prompts and tool definitions create long, consistent prefixes, both approaches work well. The prefix is long enough that block boundary waste is negligible (for a 4K prefix with 16-token blocks, wasted recomputation is at most 15 tokens, under 0.4%), and the reuse pattern is regular enough that hash-based matching is efficient.</p>
 
-    <p>At production scale, the choice between vLLM and SGLang for prefix caching is rarely the binding constraint. Model support, runtime maturity, deployment tooling, and team familiarity typically dominate the decision. But when cache behavior is a bottleneck, the data structure choice becomes visible.</p>
+    <p>At production scale, the choice between vLLM and SGLang for prefix caching is rarely the binding constraint. Model support, runtime maturity, deployment tooling, and team familiarity typically dominate the decision. The data structure difference becomes visible mainly in multi-turn workloads with high concurrency and variable turn lengths.</p>
   </div>
 </section>
 
